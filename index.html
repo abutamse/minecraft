@@ -6,7 +6,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
 <style>
-body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
+body { margin:0; overflow:hidden; background:black; }
+
+/* --- CROSSHAIR --- */
+#crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 24px;
+  pointer-events: none;
+}
 
 /* --- JOYSTICK --- */
 #joystick {
@@ -53,6 +64,8 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
 
 <body>
 
+<div id="crosshair">+</div>
+
 <div id="joystick"><div id="stick"></div></div>
 
 <div id="buttons">
@@ -60,10 +73,7 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
   <div class="btn" id="buildBtn">BUILD</div>
 </div>
 
-<!-- THREE.JS -->
 <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r149/build/three.min.js"></script>
-
-<!-- GAME FILES -->
 <script src="main.js"></script>
 
 </body>
