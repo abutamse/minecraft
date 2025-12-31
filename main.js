@@ -1,37 +1,42 @@
-/* ---------------- SCENE ---------------- */
+/* ===== BASIC SETUP ===== */
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
 const camera = new THREE.PerspectiveCamera(
   75, window.innerWidth / window.innerHeight, 0.1, 1000
 );
-camera.position.set(0, 2, 5);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-/* ---------------- LIGHT ---------------- */
-scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+/* ===== PLAYER ===== */
+const player = new THREE.Object3D();
+player.position.set(0, 1.8, 5);
+scene.add(player);
+player.add(camera);
+
+/* ===== LIGHT ===== */
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-sun.position.set(50, 100, 50);
+sun.position.set(30, 100, 30);
 scene.add(sun);
 
-/* ---------------- TEXTURES ---------------- */
+/* ===== TEXTURES ===== */
 const loader = new THREE.TextureLoader();
 const textures = {
   grass: loader.load("https://threejs.org/examples/textures/terrain/grasslight-big.jpg"),
   dirt: loader.load("https://threejs.org/examples/textures/terrain/backgrounddetailed6.jpg")
 };
 
-/* ---------------- WORLD ---------------- */
+/* ===== WORLD ===== */
 const blocks = [];
 const geo = new THREE.BoxGeometry(1,1,1);
 
 function addBlock(x,y,z,type="grass"){
   const mat = new THREE.MeshStandardMaterial({ map: textures[type] });
   const b = new THREE.Mesh(geo, mat);
-  b.position.set(x,y,z);
+  b.position.set(Math.round(x),Math.round(y),Math.round(z));
   scene.add(b);
   blocks.push(b);
 }
@@ -42,69 +47,81 @@ for(let x=-10;x<=10;x++){
   }
 }
 
-/* ---------------- CAMERA LOOK ---------------- */
+/* ===== CAMERA LOOK (SMOOTH) ===== */
 let yaw=0, pitch=0;
-let look=false, lx=0, ly=0;
+let looking=false, lx=0, ly=0;
 
 window.addEventListener("touchstart", e=>{
   if(e.target.closest("#joystick")) return;
-  look=true;
+  looking=true;
   lx=e.touches[0].clientX;
   ly=e.touches[0].clientY;
 });
-window.addEventListener("touchend", ()=>look=false);
+window.addEventListener("touchend", ()=>looking=false);
+
 window.addEventListener("touchmove", e=>{
-  if(!look) return;
+  if(!looking) return;
   const dx=e.touches[0].clientX-lx;
   const dy=e.touches[0].clientY-ly;
-  yaw -= dx*0.002;
-  pitch -= dy*0.002;
-  pitch=Math.max(-1.4,Math.min(1.4,pitch));
-  camera.rotation.set(pitch,yaw,0);
+
+  yaw -= dx * 0.002;
+  pitch -= dy * 0.002;
+  pitch = Math.max(-1.4, Math.min(1.4, pitch));
+
+  player.rotation.y = yaw;
+  camera.rotation.x = pitch;
+
   lx=e.touches[0].clientX;
   ly=e.touches[0].clientY;
 });
 
-/* ---------------- JOYSTICK MOVE ---------------- */
+/* ===== JOYSTICK MOVE ===== */
 let moveX=0, moveZ=0;
 const stick=document.getElementById("stick");
-let active=false, sx=0, sy=0;
+let joy=false, sx=0, sy=0;
 
 document.getElementById("joystick").addEventListener("touchstart", e=>{
-  active=true;
+  joy=true;
   sx=e.touches[0].clientX;
   sy=e.touches[0].clientY;
 });
+
 window.addEventListener("touchend", ()=>{
-  active=false;
+  joy=false;
   moveX=moveZ=0;
   stick.style.left="50px";
   stick.style.top="50px";
 });
+
 window.addEventListener("touchmove", e=>{
-  if(!active) return;
+  if(!joy) return;
   const dx=e.touches[0].clientX-sx;
   const dy=e.touches[0].clientY-sy;
   const max=40;
+
   const x=Math.max(-max,Math.min(max,dx));
   const y=Math.max(-max,Math.min(max,dy));
+
   stick.style.left=50+x+"px";
   stick.style.top=50+y+"px";
-  moveX=x/max;
-  moveZ=y/max;
+
+  moveX = x/max;
+  moveZ = y/max;
 });
 
-/* ---------------- RAYCAST (FIXED) ---------------- */
-const raycaster=new THREE.Raycaster();
-raycaster.far = 6;
+/* ===== RAYCAST (MINECRAFT STYLE) ===== */
+const raycaster = new THREE.Raycaster();
+raycaster.far = 5;
 
 function getTarget(){
-  raycaster.setFromCamera({x:0,y:0},camera);
-  const hits=raycaster.intersectObjects(blocks);
-  return hits.length?hits[0]:null;
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  raycaster.set(camera.getWorldPosition(new THREE.Vector3()), dir);
+  const hits = raycaster.intersectObjects(blocks);
+  return hits.length ? hits[0] : null;
 }
 
-/* ---------------- ACTIONS ---------------- */
+/* ===== ACTIONS ===== */
 document.getElementById("mineBtn").onclick=()=>{
   const hit=getTarget();
   if(!hit) return;
@@ -115,16 +132,29 @@ document.getElementById("mineBtn").onclick=()=>{
 document.getElementById("buildBtn").onclick=()=>{
   const hit=getTarget();
   if(!hit) return;
-  const p=hit.object.position.clone().add(hit.face.normal);
-  addBlock(p.x,p.y,p.z,"dirt");
+  const pos = hit.object.position.clone().add(hit.face.normal);
+  addBlock(pos.x,pos.y,pos.z,"dirt");
 };
 
-/* ---------------- LOOP ---------------- */
+/* ===== LOOP ===== */
 function animate(){
   requestAnimationFrame(animate);
-  const speed=0.06;
-  camera.position.x += (Math.sin(yaw)*moveZ + Math.cos(yaw)*moveX)*speed;
-  camera.position.z += (Math.cos(yaw)*moveZ - Math.sin(yaw)*moveX)*speed;
+
+  const speed = 0.08;
+  const forward = new THREE.Vector3(
+    Math.sin(yaw),
+    0,
+    Math.cos(yaw)
+  );
+  const right = new THREE.Vector3(
+    Math.cos(yaw),
+    0,
+    -Math.sin(yaw)
+  );
+
+  player.position.add(forward.multiplyScalar(-moveZ*speed));
+  player.position.add(right.multiplyScalar(moveX*speed));
+
   renderer.render(scene,camera);
 }
 animate();
