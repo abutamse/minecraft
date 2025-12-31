@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Minecraft Lite</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+<style>
+body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
+
+/* --- JOYSTICK --- */
+#joystick {
+  position:fixed;
+  bottom:20px;
+  left:20px;
+  width:140px;
+  height:140px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.4);
+  touch-action:none;
+}
+#stick {
+  position:absolute;
+  left:50px;
+  top:50px;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.8);
+}
+
+/* --- BUTTONS --- */
+#buttons {
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.btn {
+  width:70px;
+  height:70px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.5);
+  color:white;
+  text-align:center;
+  line-height:70px;
+  user-select:none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="joystick"><div id="stick"></div></div>
+
+<div id="buttons">
+  <div class="btn" id="mineBtn">MINE</div>
+  <div class="btn" id="buildBtn">BUILD</div>
+</div>
+
+<!-- THREE.JS -->
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r149/build/three.min.js"></script>
+
+<!-- GAME FILES -->
+<script src="main.js"></script>
+
+</body>
+</html>
