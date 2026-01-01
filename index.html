@@ -2,50 +2,28 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Mini Minecraft Local</title>
+<title>Mini Minecraft</title>
 <style>
-body { font-family:sans-serif; text-align:center; background:#87ceeb; }
-form { margin-top:50px; display:inline-block; background:rgba(255,255,255,0.8); padding:20px; border-radius:8px; }
-input { display:block; margin:10px auto; padding:8px; width:200px; }
-button { padding:8px 16px; margin:5px; }
-#error { color:red; }
+body { margin:0; overflow:hidden; font-family:sans-serif; }
+canvas { display:block; }
+#hotbar { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:5px; background:rgba(0,0,0,0.5); padding:5px; border-radius:5px;}
+#loginForm { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.7); padding:20px; border-radius:10px; color:white; display:flex; flex-direction:column; gap:10px;}
+#loginForm input, #loginForm button { padding:8px; font-size:14px; }
 </style>
 </head>
 <body>
 
-<h1>Mini Minecraft Local</h1>
+<div id="hotbar"></div>
 
-<div id="error"></div>
+<div id="loginForm">
+  <h3>Login / Registrierung</h3>
+  <input type="text" id="username" placeholder="Benutzername">
+  <input type="password" id="password" placeholder="Passwort">
+  <button id="loginBtn">Login / Registrieren</button>
+  <div id="loginMsg"></div>
+</div>
 
-<form id="auth-form">
-  <input type="text" id="username" placeholder="Benutzername" required>
-  <input type="password" id="password" placeholder="Passwort" required>
-  <button type="button" id="register-btn">Registrieren</button>
-  <button type="button" id="login-btn">Login</button>
-</form>
-
-<script>
-const errorDiv = document.getElementById('error');
-
-document.getElementById('register-btn').onclick = () => {
-  const u = document.getElementById('username').value;
-  const p = document.getElementById('password').value;
-  if(!u || !p){ errorDiv.innerText="Alle Felder ausfüllen!"; return; }
-  if(localStorage.getItem('user_'+u)){ errorDiv.innerText="Benutzer existiert!"; return; }
-  localStorage.setItem('user_'+u, JSON.stringify({password:p, world:null}));
-  localStorage.setItem('currentUser', u);
-  window.location.href='game.html';
-};
-
-document.getElementById('login-btn').onclick = () => {
-  const u = document.getElementById('username').value;
-  const p = document.getElementById('password').value;
-  const userData = JSON.parse(localStorage.getItem('user_'+u));
-  if(!userData || userData.password!==p){ errorDiv.innerText="Falscher Benutzer oder Passwort"; return; }
-  localStorage.setItem('currentUser', u);
-  window.location.href='game.html';
-};
-</script>
+<script type="module" src="game.js"></script>
 
 </body>
 </html>
