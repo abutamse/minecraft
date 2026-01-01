@@ -4,53 +4,24 @@
 <meta charset="UTF-8">
 <title>Mini Minecraft Clone</title>
 <style>
-  body { margin:0; overflow:hidden; background:#87ceeb; }
-  canvas { display:block; }
+body { margin:0; overflow:hidden; background:#87ceeb; }
+canvas { display:block; }
 
-  #crosshair {
-    position:absolute;
-    top:50%;
-    left:50%;
-    transform:translate(-50%, -50%);
-    font-size:24px;
-    color:white;
-    user-select:none;
-  }
+#crosshair {
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:24px;
+  color:white;
+  user-select:none;
+}
 
-  .touch-button {
-    position:absolute;
-    width:50px;
-    height:50px;
-    border-radius:50%;
-    background:rgba(0,0,0,0.5);
-    color:white;
-    text-align:center;
-    line-height:50px;
-    user-select:none;
-  }
+#hotbar { position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+display:flex; gap:5px; background:rgba(0,0,0,0.6); padding:6px; border-radius:6px; }
 
-  .action-btn {
-    width:60px;
-    height:60px;
-    border-radius:50%;
-    background:rgba(0,0,0,0.5);
-    color:white;
-    text-align:center;
-    line-height:60px;
-    user-select:none;
-  }
-
-  #hotbar button {
-    padding:6px 10px;
-    color:white;
-    background:#333;
-    border:1px solid #666;
-    cursor:pointer;
-  }
-
-  #hotbar button.active {
-    border:2px solid yellow;
-  }
+#hotbar button { padding:6px 10px; color:white; background:#333; border:1px solid #666; cursor:pointer; }
+#hotbar button.active { border:2px solid yellow; }
 </style>
 </head>
 <body>
@@ -58,13 +29,8 @@
 <div id="crosshair">+</div>
 <div id="hotbar"></div>
 
-<!-- Touch und Action Buttons werden durch mine.js erstellt -->
-
-<!-- Three.js & PointerLockControls -->
 <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r149/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r149/examples/js/controls/PointerLockControls.js"></script>
-
-<!-- Unser Spielcode -->
 <script src="mine.js"></script>
 </body>
 </html>
