@@ -40,7 +40,7 @@ function addBlock(x, y, z, type){
     blocks.push({ mesh, x, y, z, type });
 }
 
-// Kleine Berge + unebene Welt
+// Kleine Berge / Boden
 function generateWorld(){
     for(let x=-10;x<=10;x++){
         for(let z=-10;z<=10;z++){
@@ -131,7 +131,7 @@ function createActionButton(text, callback){
 createActionButton('MINE', mine);
 createActionButton('BUILD', build);
 
-// ---------------- JOYSTICK ----------------
+// ---------------- LEFT JOYSTICK ----------------
 const joystickBase = document.getElementById('joystick-base');
 const joystickKnob = document.getElementById('joystick-knob');
 let joystickActive=false; let joystickPos={x:0,y:0};
@@ -147,21 +147,29 @@ joystickKnob.addEventListener('touchmove',e=>{
     joystickKnob.style.left=`${30+x}px`; joystickKnob.style.top=`${30+y}px`;
 });
 
-// ---------------- CAMERA JOYSTICK ----------------
-const camBase = document.getElementById('camera-base');
-const camKnob = document.getElementById('camera-knob');
-let camActive=false; let camPos={x:0,y:0};
-camKnob.addEventListener('touchstart',e=>{e.preventDefault(); camActive=true;});
-camKnob.addEventListener('touchend',e=>{e.preventDefault(); camActive=false; camPos={x:0,y:0}; camKnob.style.left='30px'; camKnob.style.top='30px';});
-camKnob.addEventListener('touchmove',e=>{
-    if(!camActive) return;
-    const touch = e.touches[0]; const rect = camBase.getBoundingClientRect();
-    let x = touch.clientX - rect.left - rect.width/2; let y = touch.clientY - rect.top - rect.height/2;
-    const max = rect.width/2-30; const len = Math.sqrt(x*x+y*y);
-    if(len>max){ x=x/max*max; y=y/max*max;}
-    camPos = {x:x/max, y:-y/max};
-    camKnob.style.left=`${30+x}px`; camKnob.style.top=`${30+y}px`;
+// ---------------- RIGHT SIDE CAMERA DRAG ----------------
+let camPos = {x:0,y:0};
+let camActive = false;
+document.addEventListener('touchstart', e=>{
+    for(const t of e.touches){
+        if(t.clientX > window.innerWidth/2){ camActive=true; camLast={x:t.clientX, y:t.clientY}; break; }
+    }
 });
+let camLast={x:0,y:0};
+document.addEventListener('touchmove', e=>{
+    if(!camActive) return;
+    for(const t of e.touches){
+        if(t.clientX>window.innerWidth/2){
+            const dx = t.clientX - camLast.x;
+            const dy = t.clientY - camLast.y;
+            camPos.x += dx*0.002;
+            camPos.y += dy*0.002;
+            camLast={x:t.clientX, y:t.clientY};
+            break;
+        }
+    }
+});
+document.addEventListener('touchend', e=>{ camActive=false; });
 
 // ---------------- JUMP ----------------
 const jumpBtn = document.getElementById('jump-btn');
@@ -201,12 +209,9 @@ function animate(){
     if(player.y<1.5){ player.velocity.y=0; player.y=1.5; player.canJump=true;}
 
     // Camera rotation
-    let camRotY = camPos.x*Math.PI;
-    let camRotX = camPos.y*Math.PI/2;
-
     const lookDir = new THREE.Vector3(0,0,-1);
-    lookDir.applyAxisAngle(new THREE.Vector3(0,1,0), camRotY);
-    lookDir.y = -camRotX;
+    lookDir.applyAxisAngle(new THREE.Vector3(0,1,0), camPos.x);
+    lookDir.y = -camPos.y;
 
     camera.position.set(player.x,player.y+0.8,player.z);
     camera.lookAt(player.x+lookDir.x,player.y+0.8+lookDir.y,player.z+lookDir.z);
