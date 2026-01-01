@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mini Minecraft Touch Joystick</title>
+<title>Mini Minecraft Touch</title>
 <style>
 body { margin:0; overflow:hidden; background:#87ceeb; }
 canvas { display:block; }
@@ -77,6 +77,20 @@ canvas { display:block; }
   line-height:60px;
   user-select:none;
 }
+
+#jump-btn {
+  position:absolute;
+  bottom:160px;
+  left:40px;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.5);
+  color:white;
+  text-align:center;
+  line-height:60px;
+  user-select:none;
+}
 </style>
 </head>
 <body>
@@ -87,6 +101,8 @@ canvas { display:block; }
 <div id="joystick-base">
   <div id="joystick-knob"></div>
 </div>
+
+<div id="jump-btn">JUMP</div>
 
 <div id="action-buttons"></div>
 
