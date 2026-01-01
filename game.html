@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Mini Minecraft Local</title>
+<style>
+body { margin:0; overflow:hidden; background:#87ceeb; }
+canvas { display:block; }
+
+#crosshair {
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:24px;
+  color:white;
+  user-select:none;
+}
+
+#hotbar {
+  position:absolute;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:5px;
+  background:rgba(0,0,0,0.6);
+  padding:6px;
+  border-radius:6px;
+}
+
+#hotbar button {
+  padding:6px 10px;
+  color:white;
+  background:#333;
+  border:1px solid #666;
+  cursor:pointer;
+}
+#hotbar button.active { border:2px solid yellow; }
+
+#joystick-base {
+  position:absolute;
+  bottom:20px;
+  left:20px;
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.3);
+}
+
+#joystick-knob {
+  position:absolute;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.5);
+  left:30px;
+  top:30px;
+}
+
+#camera-base {
+  position:absolute;
+  bottom:20px;
+  right:20px;
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.3);
+}
+
+#camera-knob {
+  position:absolute;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.5);
+  left:30px;
+  top:30px;
+}
+
+#jump-btn {
+  position:absolute;
+  bottom:160px;
+  left:40px;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.5);
+  color:white;
+  text-align:center;
+  line-height:60px;
+  user-select:none;
+}
+
+#action-buttons {
+  position:absolute;
+  bottom:20px;
+  right:160px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.action-btn {
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.5);
+  color:white;
+  text-align:center;
+  line-height:60px;
+  user-select:none;
+}
+</style>
+</head>
+<body>
+
+<div id="crosshair">+</div>
+<div id="hotbar"></div>
+
+<div id="joystick-base"><div id="joystick-knob"></div></div>
+<div id="camera-base"><div id="camera-knob"></div></div>
+<div id="jump-btn">JUMP</div>
+<div id="action-buttons"></div>
+
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r149/build/three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
