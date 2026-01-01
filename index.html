@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Mini Minecraft Local</title>
+<style>
+body { font-family:sans-serif; text-align:center; background:#87ceeb; }
+form { margin-top:50px; display:inline-block; background:rgba(255,255,255,0.8); padding:20px; border-radius:8px; }
+input { display:block; margin:10px auto; padding:8px; width:200px; }
+button { padding:8px 16px; margin:5px; }
+#error { color:red; }
+</style>
+</head>
+<body>
+
+<h1>Mini Minecraft Local</h1>
+
+<div id="error"></div>
+
+<form id="auth-form">
+  <input type="text" id="username" placeholder="Benutzername" required>
+  <input type="password" id="password" placeholder="Passwort" required>
+  <button type="button" id="register-btn">Registrieren</button>
+  <button type="button" id="login-btn">Login</button>
+</form>
+
+<script>
+const errorDiv = document.getElementById('error');
+
+document.getElementById('register-btn').onclick = () => {
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+  if(!u || !p){ errorDiv.innerText="Alle Felder ausfüllen!"; return; }
+  if(localStorage.getItem('user_'+u)){ errorDiv.innerText="Benutzer existiert!"; return; }
+  localStorage.setItem('user_'+u, JSON.stringify({password:p, world:null}));
+  localStorage.setItem('currentUser', u);
+  window.location.href='game.html';
+};
+
+document.getElementById('login-btn').onclick = () => {
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+  const userData = JSON.parse(localStorage.getItem('user_'+u));
+  if(!userData || userData.password!==p){ errorDiv.innerText="Falscher Benutzer oder Passwort"; return; }
+  localStorage.setItem('currentUser', u);
+  window.location.href='game.html';
+};
+</script>
+
+</body>
+</html>
