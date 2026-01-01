@@ -19,22 +19,28 @@ sun.position.set(50,100,50);
 scene.add(sun);
 
 // ---------------- TEXTURES ----------------
-const textures = { grass:0x00ff00, dirt:0x8b4513, stone:0x808080, sand:0xffff00 };
+const loader = new THREE.TextureLoader();
+const textures = {
+  dirt: loader.load('dirt.png'),
+  grass: loader.load('grass.png'),
+  stone: loader.load('stone.png'),
+  sand: loader.load('sand.png')
+};
 
 // ---------------- WORLD ----------------
 const blocks = [];
 const BLOCK = 1;
 
-function addBlock(x,y,z,type){
-    const geo = new THREE.BoxGeometry(BLOCK,BLOCK,BLOCK);
-    const mat = new THREE.MeshBasicMaterial({color:textures[type]});
-    const mesh = new THREE.Mesh(geo,mat);
-    mesh.position.set(x+0.5,y+0.5,z+0.5);
+function addBlock(x, y, z, type){
+    const geo = new THREE.BoxGeometry(BLOCK, BLOCK, BLOCK);
+    const mat = new THREE.MeshStandardMaterial({ map: textures[type] });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
     scene.add(mesh);
-    blocks.push({mesh,x,y,z,type});
+    blocks.push({ mesh, x, y, z, type });
 }
 
-// Welt generieren: Boden + kleine Berge
+// Kleine Berge + unebene Welt
 function generateWorld(){
     for(let x=-10;x<=10;x++){
         for(let z=-10;z<=10;z++){
@@ -94,19 +100,20 @@ function getTarget(){
 function build(){
     const t = getTarget();
     if(!t || inventory[selected]<=0) return;
-    let x=t.x, z=t.z, y=t.y+1;
-    while(blocks.find(b=>b.x===x && b.y===y && b.z===z)) y++;
-    addBlock(x,y,z,selected);
+    let x = t.x, z = t.z, y = t.y + 1;
+    while(blocks.find(b => b.x === x && b.y === y && b.z === z)) y++;
+    addBlock(x, y, z, selected);
     inventory[selected]--;
     saveData();
     updateHotbar();
 }
+
 function mine(){
     const t = getTarget();
     if(!t) return;
     scene.remove(t.mesh);
     blocks.splice(blocks.indexOf(t),1);
-    inventory[t.type]=(inventory[t.type]||0)+1;
+    inventory[t.type] = (inventory[t.type]||0)+1;
     coins++;
     saveData();
     updateHotbar();
