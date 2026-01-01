@@ -1,46 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Joystick Test</title>
+<meta charset="UTF-8">
+<title>Mini Minecraft Clone</title>
 <style>
-html,body{
-  margin:0;
-  padding:0;
-  overflow:hidden;
-  background:#87ceeb;
-  touch-action:none;
-}
+  body { margin:0; overflow:hidden; background:#87ceeb; }
+  canvas { display:block; }
 
-/* Joystick */
-#joystick {
-  position:absolute;
-  bottom:30px;
-  left:30px;
-  width:120px;
-  height:120px;
-  border-radius:50%;
-  background:rgba(0,0,0,0.3);
-}
-#stick {
-  position:absolute;
-  width:50px;
-  height:50px;
-  border-radius:50%;
-  background:rgba(255,255,255,0.8);
-  left:35px;
-  top:35px;
-}
+  #crosshair {
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:24px;
+    color:white;
+    user-select:none;
+  }
+
+  .touch-button {
+    position:absolute;
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    background:rgba(0,0,0,0.5);
+    color:white;
+    text-align:center;
+    line-height:50px;
+    user-select:none;
+  }
+
+  .action-btn {
+    width:60px;
+    height:60px;
+    border-radius:50%;
+    background:rgba(0,0,0,0.5);
+    color:white;
+    text-align:center;
+    line-height:60px;
+    user-select:none;
+  }
+
+  #hotbar button {
+    padding:6px 10px;
+    color:white;
+    background:#333;
+    border:1px solid #666;
+    cursor:pointer;
+  }
+
+  #hotbar button.active {
+    border:2px solid yellow;
+  }
 </style>
 </head>
 <body>
 
-<div id="joystick">
-  <div id="stick"></div>
-</div>
+<div id="crosshair">+</div>
+<div id="hotbar"></div>
 
-<script src="three.min.js"></script>
+<!-- Touch und Action Buttons werden durch mine.js erstellt -->
+
+<!-- Three.js & PointerLockControls -->
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r149/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r149/examples/js/controls/PointerLockControls.js"></script>
+
+<!-- Unser Spielcode -->
 <script src="mine.js"></script>
-
 </body>
 </html>
