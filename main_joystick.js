@@ -59,21 +59,25 @@ function getTarget(){
 }
 
 // ---------------- BUILD & MINE ----------------
+function build(){
+  const t = getTarget();
+  if(!t || inventory[selected] <= 0) return;
+
+  let x = t.x, z = t.z;
+  let y = t.y + 1;
+  while(blocks.find(b => b.x===x && b.y===y && b.z===z)) y++;
+
+  addBlock(x, y, z, selected);
+  inventory[selected]--;
+  updateHotbar();
+}
+
 function mine(){
-  const t=getTarget();
+  const t = getTarget();
   if(!t) return;
   scene.remove(t.mesh);
   blocks.splice(blocks.indexOf(t),1);
   inventory[t.type]++;
-  updateHotbar();
-}
-function build(){
-  const t=getTarget();
-  if(!t || inventory[selected]<=0) return;
-  const x=t.x, y=t.y+1, z=t.z;
-  if(blocks.find(b=>b.x===x && b.y===y && b.z===z)) return;
-  addBlock(x,y,z,selected);
-  inventory[selected]--;
   updateHotbar();
 }
 
@@ -96,10 +100,10 @@ let player = { x:0, y:2, z:5, velocity:new THREE.Vector3(), canJump:true };
 function checkCollisions(pos){
   for(const b of blocks){
     if(pos.x+0.3>b.x && pos.x-0.3<b.x+1 &&
-       pos.y+1.8>b.y && pos.y<b.y+1 &&
+       pos.y < b.y+1 && pos.y+1.8 > b.y &&
        pos.z+0.3>b.z && pos.z-0.3<b.z+1){
          return true;
-       }
+    }
   }
   return false;
 }
@@ -120,11 +124,18 @@ joystickKnob.addEventListener('touchmove', e=>{
   let x = touch.clientX - rect.left - rect.width/2;
   let y = touch.clientY - rect.top - rect.height/2;
   const max = rect.width/2 - 30;
-  const len = Math.sqrt(x*x+y*y);
-  if(len>max){ x=x/max*max; y=y/max*max; }
-  joystickPos = {x: x/max, y: -y/max}; // -y weil Bildschirmkoordinaten
+  const len = Math.sqrt(x*x + y*y);
+  if(len>max){ x = x/max*max; y = y/max*max; }
+  joystickPos = {x: x/max, y: -y/max};
   joystickKnob.style.left = `${30 + x}px`;
   joystickKnob.style.top = `${30 + y}px`;
+});
+
+// ---------------- JUMP BUTTON ----------------
+const jumpBtn = document.getElementById('jump-btn');
+jumpBtn.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  if(player.canJump){ player.velocity.y = 7; player.canJump = false; }
 });
 
 // ---------------- ANIMATION ----------------
@@ -144,7 +155,7 @@ function animate(){
   player.velocity.x += (dir.x*forward + side.x*right)*speed*delta;
   player.velocity.z += (dir.z*forward + side.z*right)*speed*delta;
 
-  // Gravity & jump (touch jump key optional)
+  // Gravity
   player.velocity.y -= 9.8*delta;
 
   const pos = new THREE.Vector3(player.x, player.y, player.z);
