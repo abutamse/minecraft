@@ -3,14 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <title>Mini Minecraft</title>
+
 <style>
 body { margin:0; overflow:hidden; font-family:sans-serif; }
 canvas { display:block; }
-#hotbar { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:5px; background:rgba(0,0,0,0.5); padding:5px; border-radius:5px;}
-#loginForm { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.7); padding:20px; border-radius:10px; color:white; display:flex; flex-direction:column; gap:10px;}
-#loginForm input, #loginForm button { padding:8px; font-size:14px; }
+
+#hotbar {
+  position:absolute;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:5px;
+  background:rgba(0,0,0,0.5);
+  padding:5px;
+  border-radius:5px;
+}
+
+#loginForm {
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(0,0,0,0.7);
+  padding:20px;
+  border-radius:10px;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+#loginForm input,
+#loginForm button {
+  padding:8px;
+  font-size:14px;
+}
 </style>
 </head>
+
 <body>
 
 <div id="hotbar"></div>
@@ -24,6 +55,5 @@ canvas { display:block; }
 </div>
 
 <script type="module" src="game.js"></script>
-
 </body>
 </html>
