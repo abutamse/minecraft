@@ -27,7 +27,6 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-camera.position.set(0,2,5);
 const renderer = new THREE.WebGLRenderer({antialias:false});
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
@@ -45,17 +44,6 @@ const sun=new THREE.DirectionalLight(0xffffff,0.6);
 sun.position.set(100,200,100);
 scene.add(sun);
 
-/* ---------- PLAYER ---------- */
-const player={
-  pos:new THREE.Vector3(0,3,0),
-  vel:new THREE.Vector3(),
-  yaw:0,pitch:0,
-  hp:Number(localStorage.getItem(key("hp")))||100,
-  hunger:Number(localStorage.getItem(key("hunger")))||100,
-  coins:Number(localStorage.getItem(key("coins")))||0,
-  onGround:false
-};
-
 /* ---------- UI ---------- */
 const healthUI=document.getElementById("health");
 const hungerUI=document.getElementById("hunger");
@@ -63,6 +51,19 @@ const coinsUI=document.getElementById("coins");
 const foodUI=document.getElementById("food");
 const weaponsUI=document.getElementById("weapons");
 const hotbar=document.getElementById("hotbar");
+const crosshair=document.getElementById("crosshair");
+
+/* ---------- PLAYER ---------- */
+const player={
+  pos:new THREE.Vector3(0,5,0),
+  vel:new THREE.Vector3(),
+  yaw:0,pitch:0,
+  hp:Number(localStorage.getItem(key("hp")))||100,
+  hunger:Number(localStorage.getItem(key("hunger")))||100,
+  coins:Number(localStorage.getItem(key("coins")))||0,
+  onGround:false,
+  speed:10
+};
 
 function updateStats(){
   healthUI.textContent=`❤️ ${Math.floor(player.hp)}`;
@@ -73,25 +74,20 @@ function updateStats(){
 /* ---------- TEXTURES ---------- */
 const loader=new THREE.TextureLoader();
 function tex(n){
-  const t=loader.load(n);
-  t.magFilter=t.minFilter=THREE.NearestFilter;
-  return t;
+  const t=loader.load(n); t.magFilter=t.minFilter=THREE.NearestFilter; return t;
 }
-const textures={
-  grass:tex("grass.png"),
-  dirt:tex("dirt.png"),
-  wood:tex("wood.png"),
-  leaves:tex("leaves.png")
-};
+const textures={grass:tex("grass.png"),dirt:tex("dirt.png"),wood:tex("wood.png"),leaves:tex("leaves.png")};
 
 /* ---------- WORLD ---------- */
 const geo=new THREE.BoxGeometry(1,1,1);
 const blocks=[];
 const world=JSON.parse(localStorage.getItem(key("world"))||"{}");
+const chunks=new Set();
 
 function saveWorld(){ localStorage.setItem(key("world"),JSON.stringify(world)); }
 
 function addBlock(x,y,z,type,save=true){
+  if(world[`${x},${y},${z}`]) return;
   const mat=new THREE.MeshLambertMaterial({map:textures[type]});
   const mesh=new THREE.Mesh(geo,mat);
   mesh.position.set(x+0.5,y+0.5,z+0.5);
@@ -107,21 +103,38 @@ function removeBlock(b){
   saveWorld();
 }
 
-/* Load saved world */
-for(const k in world){
-  const [x,y,z]=k.split(",").map(Number);
-  addBlock(x,y,z,world[k],false);
+/* ---------- CHUNK GENERATOR ---------- */
+function genChunk(cx,cz){
+  for(let x=cx;x<cx+16;x++){
+    for(let z=cz;z<cz+16;z++){
+      const h=Math.floor(Math.random()*4)+1 + Math.floor(Math.sin(x*0.2+z*0.2)*2);
+      for(let y=0;y<=h;y++){
+        addBlock(x,y,z,y<h?"dirt":"grass");
+      }
+      // Bäume
+      if(Math.random()<0.1){
+        const hTree=2+Math.floor(Math.random()*2);
+        for(let y=1;y<=hTree;y++) addBlock(x,h+y,z,"wood");
+        for(let dx=-1;dx<=1;dx++)
+          for(let dz=-1;dz<=1;dz++)
+            addBlock(x+dx,h+hTree,z+dz,"leaves");
+      }
+    }
+  }
 }
 
-/* Ground */
-for(let x=-20;x<20;x++)
-  for(let z=-20;z<20;z++)
-    if(!world[`${x},0,${z}`]){
-      addBlock(x,0,z,"grass");
-      addBlock(x,-1,z,"dirt");
+function loadChunks(){
+  const cx=Math.floor(player.pos.x/16)*16;
+  const cz=Math.floor(player.pos.z/16)*16;
+  for(let dx=-32;dx<=32;dx+=16)
+    for(let dz=-32;dz<=32;dz+=16){
+      const k=`${cx+dx},${cz+dz}`;
+      if(!chunks.has(k)){ genChunk(cx+dx,cz+dz); chunks.add(k); }
     }
+}
+loadChunks();
 
-/* ---------- INVENTORY ---------- */
+/* ---------- INVENTORY / FOOD ---------- */
 let food=Number(localStorage.getItem(key("food"))||0);
 function updateFoodUI(){
   foodUI.innerHTML="";
@@ -172,7 +185,6 @@ function updateWeaponsUI(){
   }
 }
 updateWeaponsUI();
-
 function weaponDamage(){ return weapons.find(w=>w.name===currentWeapon)?.dmg||5; }
 
 /* ---------- MOBS ---------- */
@@ -181,7 +193,7 @@ const mobGeo=new THREE.BoxGeometry(0.8,0.8,0.8);
 function spawnMob(type){
   const mat=new THREE.MeshLambertMaterial({color:type==="animal"?0x996633:0xaa0000});
   const mesh=new THREE.Mesh(mobGeo,mat);
-  mesh.position.set(Math.random()*20-10,1,Math.random()*20-10);
+  mesh.position.set(Math.random()*32-16,1,Math.random()*32-16);
   scene.add(mesh);
   mobs.push({type,mesh,hp:type==="animal"?20:40,vel:new THREE.Vector3()});
 }
@@ -199,25 +211,8 @@ function shootProjectile(){
 
 /* ---------- RAYCAST ---------- */
 const ray=new THREE.Raycaster();
-function getTargetBlock(){
-  ray.setFromCamera({x:0,y:0},camera);
-  const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0];
-  return hit?blocks.find(b=>b.mesh===hit.object):null;
-}
-function hitMob(){
-  ray.setFromCamera({x:0,y:0},camera);
-  const hit=ray.intersectObjects(mobs.map(m=>m.mesh))[0];
-  if(!hit) return;
-  const mob=mobs.find(m=>m.mesh===hit.object);
-  if(!mob) return;
-  mob.hp-=weaponDamage();
-  if(mob.hp<=0){
-    scene.remove(mob.mesh);
-    mobs.splice(mobs.indexOf(mob),1);
-    player.coins+=mob.type==="animal"?10:25;
-    if(mob.type==="animal"){ food++; localStorage.setItem(key("food"),food); }
-  }
-}
+function getTargetBlock(){ ray.setFromCamera({x:0,y:0},camera); const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0]; return hit?blocks.find(b=>b.mesh===hit.object):null; }
+function hitMob(){ ray.setFromCamera({x:0,y:0},camera); const hit=ray.intersectObjects(mobs.map(m=>m.mesh))[0]; if(!hit) return; const mob=mobs.find(m=>m.mesh===hit.object); if(!mob) return; mob.hp-=weaponDamage(); if(mob.hp<=0){ scene.remove(mob.mesh); mobs.splice(mobs.indexOf(mob),1); player.coins+=mob.type==="animal"?10:25; if(mob.type==="animal"){ food++; localStorage.setItem(key("food"),food); } } }
 
 /* ---------- CONTROLS ---------- */
 const joystick=document.getElementById("joystick");
@@ -263,12 +258,11 @@ function animate(){
   if(player.hunger<=0) player.hp-=dt*5;
 
   // Bewegung + Kollisionsphysik
-  const speed=5;
   const fwd=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
   const right=new THREE.Vector3(-fwd.z,0,fwd.x);
 
-  player.vel.addScaledVector(fwd,-joy.y*speed*dt);
-  player.vel.addScaledVector(right,joy.x*speed*dt);
+  player.vel.addScaledVector(fwd,-joy.y*player.speed*dt);
+  player.vel.addScaledVector(right,joy.x*player.speed*dt);
   player.vel.y-=9.8*dt;
 
   // Kollisionsprüfung
@@ -278,14 +272,12 @@ function animate(){
     if(newPos.x+0.5>b.x && newPos.x-0.5<b.x+1 &&
        newPos.y+0.0>b.y && newPos.y-1< b.y+1 &&
        newPos.z+0.5>b.z && newPos.z-0.5<b.z+1){
-      // Kollisionsreaktion
       if(player.vel.y<0) { newPos.y=b.y+1; player.vel.y=0; onGround=true; }
       else if(player.vel.y>0) newPos.y=b.y-1; player.vel.y=0;
     }
   }
   player.pos.copy(newPos);
   player.onGround=onGround;
-
   player.vel.multiplyScalar(0.85);
 
   camera.position.copy(player.pos).add(new THREE.Vector3(0,1.6,0));
@@ -308,13 +300,17 @@ function animate(){
     if(p.life<=0){ scene.remove(p.mesh); projectiles.splice(i,1); }
   }
 
+  // Spawn Chunks für unendliche Welt
+  loadChunks();
+
   // Spawn Tiere/Monster nachts
   if(day<0.3 && mobs.length<10) spawnMob("animal");
   if(day<0.3 && mobs.length<15) spawnMob("monster");
 
-  // Update UI
+  // UI
   updateStats();
   updateFoodUI();
+  updateWeaponsUI();
 
   renderer.render(scene,camera);
 
