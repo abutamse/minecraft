@@ -16,27 +16,25 @@ html,body{
 }
 canvas{ position:fixed; inset:0; }
 
-#hotbar,#weapons,#food,#stats{
+#login{
   position:fixed;
+  inset:0;
+  background:#000c;
+  color:white;
   display:flex;
-  gap:6px;
-  background:rgba(0,0,0,0.6);
-  padding:6px;
-  border-radius:6px;
-  z-index:10;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  z-index:20;
 }
 
-#hotbar{ bottom:10px; left:50%; transform:translateX(-50%); }
-#weapons{ bottom:60px; left:50%; transform:translateX(-50%); }
-#food{ bottom:110px; left:50%; transform:translateX(-50%); }
-#stats{ top:10px; left:10px; flex-direction:column; color:white; }
-
-button{
-  background:#333;
-  color:white;
-  border:1px solid #666;
-  padding:6px;
-  border-radius:4px;
+#login input{
+  padding:10px;
+  font-size:18px;
+}
+#login button{
+  margin-top:10px;
+  padding:10px;
 }
 
 #crosshair{
@@ -49,6 +47,29 @@ button{
   pointer-events:none;
 }
 
+#stats,#hotbar,#food,#weapons{
+  position:fixed;
+  background:#0009;
+  color:white;
+  padding:6px;
+  border-radius:6px;
+  display:flex;
+  gap:6px;
+  z-index:10;
+}
+
+#stats{ top:10px; left:10px; flex-direction:column; }
+#hotbar{ bottom:10px; left:50%; transform:translateX(-50%); }
+#food{ bottom:60px; left:50%; transform:translateX(-50%); }
+#weapons{ bottom:110px; left:50%; transform:translateX(-50%); }
+
+button{
+  background:#333;
+  color:white;
+  border:1px solid #666;
+  padding:6px;
+}
+
 #joystick{
   position:fixed;
   left:20px;
@@ -56,7 +77,7 @@ button{
   width:120px;
   height:120px;
   border-radius:50%;
-  background:rgba(255,255,255,0.15);
+  background:#fff2;
 }
 #stick{
   position:absolute;
@@ -65,14 +86,14 @@ button{
   width:40px;
   height:40px;
   border-radius:50%;
-  background:rgba(255,255,255,0.7);
+  background:#fff8;
 }
 
 .control{
   position:fixed;
   right:20px;
   padding:14px;
-  background:rgba(0,0,0,0.6);
+  background:#0009;
   color:white;
   border-radius:8px;
 }
@@ -84,12 +105,18 @@ button{
 
 <body>
 
+<div id="login">
+  <h2>Spielername</h2>
+  <input id="nameInput" placeholder="Name eingeben">
+  <button id="startBtn">Spielen</button>
+</div>
+
 <div id="crosshair">+</div>
 
 <div id="stats">
-  <div id="hunger">🍖 Hunger: 100%</div>
-  <div id="coins">🪙 Münzen: 0</div>
-  <div id="health">❤️ Leben: 100</div>
+  <div id="health">❤️ 100</div>
+  <div id="hunger">🍖 100%</div>
+  <div id="coins">🪙 0</div>
 </div>
 
 <div id="food"></div>
