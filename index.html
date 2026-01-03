@@ -5,67 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Mini Minecraft Mobile</title>
 <style>
-html, body {
-  margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:black;
-  font-family:sans-serif;
-}
-canvas {
-  position:fixed; inset:0; width:100%; height:100%;
-}
-#hotbar {
-  position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
-  display:flex; gap:6px; background:rgba(0,0,0,0.6); padding:6px; border-radius:6px; z-index:10;
-}
-#hotbar button {
-  background:#333; color:white; border:1px solid #666; padding:6px; border-radius:4px;
-}
-#joystick {
-  position:fixed; left:20px; bottom:20px; width:120px; height:120px;
-  border-radius:50%; background:rgba(255,255,255,0.15); z-index:10;
-}
-#stick {
-  position:absolute; left:40px; top:40px; width:40px; height:40px;
-  border-radius:50%; background:rgba(255,255,255,0.7);
-}
-.control {
-  position:fixed; right:20px; padding:14px; background:rgba(0,0,0,0.6);
-  color:white; border-radius:8px; z-index:10; user-select:none; text-align:center;
-}
-#jump { bottom:200px; }
-#mine { bottom:140px; }
-#build { bottom:80px; }
-#shoot { bottom:20px; }
-#health, #hunger, #coins, #food, #weapons {
-  position:fixed; top:10px; left:10px; background:rgba(0,0,0,0.6); color:white;
-  padding:6px; border-radius:6px; z-index:10;
-}
-#hunger { top:40px; }
-#coins { top:70px; }
-#food { top:100px; }
-#weapons { top:130px; }
-/* Login */
+html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:black; font-family:sans-serif; }
+canvas { position:fixed; inset:0; width:100%; height:100%; }
+
 #login {
-  position:fixed; inset:0; background:rgba(0,0,0,0.8);
-  display:flex; flex-direction:column; justify-content:center; align-items:center;
-  z-index:100;
+  position:fixed; inset:0; background:rgba(0,0,0,0.9);
+  display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:100;
 }
 #login input { padding:8px; font-size:16px; margin-bottom:10px; }
 #login button { padding:8px 16px; font-size:16px; }
-/* Fadenkreuz wird per JS hinzugefügt */
+
+#joystick { position:fixed; left:20px; bottom:20px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,0.15); z-index:10; }
+#stick { position:absolute; left:40px; top:40px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.7); }
+
+.control { position:fixed; right:20px; padding:14px; background:rgba(0,0,0,0.6); color:white; border-radius:8px; z-index:10; user-select:none; text-align:center; }
+#jump { bottom:200px; } #mine { bottom:140px; } #build { bottom:80px; } #shoot { bottom:20px; }
+
+#health, #hunger, #coins, #food, #weapons { position:fixed; left:10px; background:rgba(0,0,0,0.6); color:white; padding:6px; border-radius:6px; z-index:10; }
+#health { top:10px; } #hunger { top:40px; } #coins { top:70px; } #food { top:100px; } #weapons { top:130px; }
 </style>
 </head>
 <body>
 
-<!-- Login -->
+<!-- LOGIN -->
 <div id="login">
-  <input id="nameInput" placeholder="Name">
+  <input id="nameInput" placeholder="Name eingeben">
   <button id="startBtn">Start</button>
 </div>
 
-<!-- Joystick -->
+<!-- JOYSTICK -->
 <div id="joystick"><div id="stick"></div></div>
 
-<!-- Controls -->
+<!-- CONTROLS -->
 <div id="jump" class="control">SPRINGEN</div>
 <div id="mine" class="control">GRABEN</div>
 <div id="build" class="control">BAUEN</div>
@@ -79,7 +50,7 @@ canvas {
 <div id="weapons"></div>
 <div id="hotbar"></div>
 
-<!-- Game -->
+<!-- SPIEL -->
 <script type="module" src="game.js"></script>
 </body>
 </html>
