@@ -1,63 +1,44 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
 
-window.onload = () => {
+let user;
 
-// ---------------- LOGIN ----------------
-const loginForm = document.getElementById('loginForm');
-const usernameInput = document.getElementById('username');
-const passwordInput = document.getElementById('password');
-const loginBtn = document.getElementById('loginBtn');
-const loginMsg = document.getElementById('loginMsg');
-
-let user = localStorage.getItem('currentUser');
+// ---------- LOGIN ----------
+const loginForm = document.getElementById("loginForm");
+const loginBtn = document.getElementById("loginBtn");
+const msg = document.getElementById("loginMsg");
 
 loginBtn.onclick = () => {
-  const u = usernameInput.value.trim();
-  const p = passwordInput.value.trim();
-  if(!u || !p){
-    loginMsg.textContent="Bitte Benutzername & Passwort eingeben";
-    return;
-  }
+  const u = username.value.trim();
+  const p = password.value.trim();
+  if(!u||!p){ msg.textContent="Daten fehlen"; return; }
 
-  const users = JSON.parse(localStorage.getItem('users')) || {};
-  if(users[u]){
-    if(users[u].password !== p){
-      loginMsg.textContent="Falsches Passwort";
-      return;
-    }
-  } else {
-    users[u] = {password:p};
-    localStorage.setItem('users',JSON.stringify(users));
+  const users = JSON.parse(localStorage.getItem("users")) || {};
+  if(users[u] && users[u].password!==p){
+    msg.textContent="Falsches Passwort"; return;
   }
-
-  user = u;
-  localStorage.setItem('currentUser', user);
+  users[u] = {password:p};
+  localStorage.setItem("users",JSON.stringify(users));
+  user=u;
   loginForm.style.display="none";
   startGame();
 };
 
-// ---------------- GAME ----------------
+// ---------- GAME ----------
 function startGame(){
 
-// THREE
+// BASIC
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-
+const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
 const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
-window.addEventListener('resize',()=>{
-  camera.aspect = window.innerWidth / window.innerHeight;
+addEventListener("resize",()=>{
+  camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(innerWidth,innerHeight);
 });
 
 // LIGHT
@@ -67,117 +48,164 @@ sun.position.set(50,100,50);
 scene.add(sun);
 
 // TEXTURES
-const loader = new THREE.TextureLoader();
-const textures = {
-  grass: loader.load('grass.png'),
-  dirt: loader.load('dirt.png'),
-  stone: loader.load('stone.png'),
-  sand: loader.load('sand.png'),
-  wood: loader.load('wood.png'),
-  leaves: loader.load('leaves.png')
+const loader=new THREE.TextureLoader();
+const tex={
+ grass:loader.load("grass.png"),
+ dirt:loader.load("dirt.png"),
+ stone:loader.load("stone.png"),
+ sand:loader.load("sand.png"),
+ wood:loader.load("wood.png"),
+ leaves:loader.load("leaves.png")
 };
 
 // PLAYER
-const player = {
-  x:0, y:5, z:0,
-  velocity:new THREE.Vector3(),
-  canJump:true
+const player={
+ pos:new THREE.Vector3(0,5,0),
+ vel:new THREE.Vector3(),
+ yaw:0,pitch:0,
+ onGround:false,
+ thirdPerson:false
 };
 
 // INVENTORY
-let inventory = JSON.parse(localStorage.getItem(user+'_inventory')) || {
-  grass:10, dirt:10, stone:10, sand:10, wood:0, leaves:0
-};
+let inventory=JSON.parse(localStorage.getItem(user+"_inv"))||
+{grass:10,dirt:10,stone:10,sand:10,wood:5,leaves:5};
 
-let coins = parseInt(localStorage.getItem(user+'_coins')) || 0;
-let selected = "grass";
-
-const hotbar = document.getElementById("hotbar");
+let selected="grass";
+const hotbar=document.getElementById("hotbar");
 
 function updateHotbar(){
-  hotbar.innerHTML="";
-  for(const k in inventory){
-    const b = document.createElement("button");
-    b.textContent = `${k} (${inventory[k]})`;
-    if(k===selected) b.style.border="2px solid yellow";
-    b.onclick=()=>{selected=k; updateHotbar();};
-    hotbar.appendChild(b);
-  }
+ hotbar.innerHTML="";
+ for(const k in inventory){
+  const b=document.createElement("button");
+  b.textContent=`${k} (${inventory[k]})`;
+  if(k===selected) b.style.border="2px solid yellow";
+  b.onclick=()=>{selected=k; updateHotbar();};
+  hotbar.appendChild(b);
+ }
 }
 updateHotbar();
 
-function saveData(){
-  localStorage.setItem(user+'_inventory',JSON.stringify(inventory));
-  localStorage.setItem(user+'_coins',coins);
+function save(){
+ localStorage.setItem(user+"_inv",JSON.stringify(inventory));
+ localStorage.setItem(user+"_world",JSON.stringify(worldData));
 }
 
-// BLOCKS
-const blocks = [];
+// BLOCKS + WORLD SAVE
+const blocks=[];
+const worldData=JSON.parse(localStorage.getItem(user+"_world"))||{};
 
-function addBlock(x,y,z,type){
-  const geo = new THREE.BoxGeometry(1,1,1);
-  const mat = new THREE.MeshStandardMaterial({map:textures[type]});
-  const mesh = new THREE.Mesh(geo,mat);
-  mesh.position.set(x+0.5,y+0.5,z+0.5);
-  scene.add(mesh);
-  blocks.push({mesh,x,y,z,type});
+function addBlock(x,y,z,type,saveBlock=true){
+ const geo=new THREE.BoxGeometry(1,1,1);
+ const mat=new THREE.MeshStandardMaterial({map:tex[type]});
+ const mesh=new THREE.Mesh(geo,mat);
+ mesh.position.set(x+0.5,y+0.5,z+0.5);
+ scene.add(mesh);
+ blocks.push({x,y,z,type,mesh});
+ if(saveBlock){
+   worldData[`${x},${y},${z}`]=type;
+   save();
+ }
 }
 
-// WORLD
-const loadedChunks = new Set();
+function removeBlock(b){
+ scene.remove(b.mesh);
+ delete worldData[`${b.x},${b.y},${b.z}`];
+ blocks.splice(blocks.indexOf(b),1);
+ save();
+}
 
-function generateChunk(cx,cz){
-  for(let x=cx;x<cx+10;x++){
-    for(let z=cz;z<cz+10;z++){
-      if(blocks.find(b=>b.x===x && b.z===z)) continue;
-      const h = 1 + Math.floor(Math.random()*3);
-      for(let y=0;y<h;y++){
-        addBlock(x,y,z,y<h-1?"stone":"grass");
-      }
-    }
+// LOAD WORLD
+for(const k in worldData){
+ const [x,y,z]=k.split(",").map(Number);
+ addBlock(x,y,z,worldData[k],false);
+}
+
+// GENERATE CHUNKS
+const chunks=new Set();
+function genChunk(cx,cz){
+ for(let x=cx;x<cx+10;x++){
+  for(let z=cz;z<cz+10;z++){
+   for(let y=0;y<3;y++){
+    if(!worldData[`${x},${y},${z}`])
+      addBlock(x,y,z,y<2?"stone":"grass");
+   }
   }
+ }
 }
 
 function loadChunks(){
-  const cx = Math.floor(player.x/10)*10;
-  const cz = Math.floor(player.z/10)*10;
-  for(let dx=-20;dx<=20;dx+=10){
-    for(let dz=-20;dz<=20;dz+=10){
-      const key = `${cx+dx},${cz+dz}`;
-      if(!loadedChunks.has(key)){
-        generateChunk(cx+dx,cz+dz);
-        loadedChunks.add(key);
-      }
-    }
+ const cx=Math.floor(player.pos.x/10)*10;
+ const cz=Math.floor(player.pos.z/10)*10;
+ for(let dx=-20;dx<=20;dx+=10){
+  for(let dz=-20;dz<=20;dz+=10){
+   const k=`${cx+dx},${cz+dz}`;
+   if(!chunks.has(k)){ genChunk(cx+dx,cz+dz); chunks.add(k); }
   }
+ }
 }
 loadChunks();
 
-// ANIMATION
-const clock = new THREE.Clock();
+// RAYCAST
+const ray=new THREE.Raycaster();
+function getTarget(){
+ ray.setFromCamera({x:0,y:0},camera);
+ const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0];
+ return hit?blocks.find(b=>b.mesh===hit.object):null;
+}
 
+// INPUT
+addEventListener("mousedown",e=>{
+ const t=getTarget();
+ if(!t) return;
+ if(e.button===0){ // mine
+   removeBlock(t);
+   inventory[t.type]++;
+ } else if(e.button===2 && inventory[selected]>0){
+   addBlock(t.x,t.y+1,t.z,selected);
+   inventory[selected]--;
+ }
+ updateHotbar();
+});
+
+// CAMERA LOOK
+addEventListener("mousemove",e=>{
+ if(document.pointerLockElement!==renderer.domElement) return;
+ player.yaw -= e.movementX*0.002;
+ player.pitch -= e.movementY*0.002;
+ player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch));
+});
+
+renderer.domElement.onclick=()=>renderer.domElement.requestPointerLock();
+
+// FIRST / THIRD PERSON
+addEventListener("keydown",e=>{
+ if(e.key==="v") player.thirdPerson=!player.thirdPerson;
+});
+
+// LOOP
+const clock=new THREE.Clock();
 function animate(){
-  requestAnimationFrame(animate);
-  const dt = clock.getDelta();
+ requestAnimationFrame(animate);
+ const dt=clock.getDelta();
 
-  player.velocity.y -= 9.8 * dt;
-  player.x += player.velocity.x * dt;
-  player.y += player.velocity.y * dt;
-  player.z += player.velocity.z * dt;
+ player.vel.y-=9.8*dt;
+ player.pos.addScaledVector(player.vel,dt);
+ if(player.pos.y<2){player.pos.y=2;player.vel.y=0;}
 
-  if(player.y < 1.5){
-    player.y = 1.5;
-    player.velocity.y = 0;
-    player.canJump = true;
-  }
+ loadChunks();
 
-  camera.position.set(player.x, player.y+0.8, player.z+2);
-  camera.lookAt(player.x, player.y+0.8, player.z);
+ const camDist=player.thirdPerson?4:0;
+ const dir=new THREE.Vector3(
+  Math.sin(player.yaw)*Math.cos(player.pitch),
+  Math.sin(player.pitch),
+ -Math.cos(player.yaw)*Math.cos(player.pitch)
+ );
 
-  loadChunks();
-  renderer.render(scene,camera);
+ camera.position.copy(player.pos).addScaledVector(dir,-camDist).add(new THREE.Vector3(0,1.6,0));
+ camera.lookAt(player.pos.clone().add(dir));
+
+ renderer.render(scene,camera);
 }
 animate();
-
 }
-};
