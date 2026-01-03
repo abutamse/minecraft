@@ -1,189 +1,176 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
 
+/* ---------- LOGIN ---------- */
 let user;
-
-// ---------- LOGIN ----------
-const loginForm = document.getElementById("loginForm");
-const loginBtn = document.getElementById("loginBtn");
-const msg = document.getElementById("loginMsg");
-
 loginBtn.onclick = () => {
-  const u = username.value.trim();
-  const p = password.value.trim();
-  if(!u||!p){ msg.textContent="Daten fehlen"; return; }
-
-  const users = JSON.parse(localStorage.getItem("users")) || {};
-  if(users[u] && users[u].password!==p){
-    msg.textContent="Falsches Passwort"; return;
-  }
-  users[u] = {password:p};
-  localStorage.setItem("users",JSON.stringify(users));
-  user=u;
-  loginForm.style.display="none";
-  startGame();
+ const u=username.value.trim(), p=password.value.trim();
+ if(!u||!p){loginMsg.textContent="Fehlt";return;}
+ const users=JSON.parse(localStorage.getItem("users"))||{};
+ if(users[u] && users[u].password!==p){loginMsg.textContent="Falsch";return;}
+ users[u]={password:p};
+ localStorage.setItem("users",JSON.stringify(users));
+ user=u;
+ loginForm.style.display="none";
+ startGame();
 };
 
-// ---------- GAME ----------
+/* ---------- GAME ---------- */
 function startGame(){
 
-// BASIC
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
+/* BASIC */
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
+const renderer=new THREE.WebGLRenderer({antialias:false});
 renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 addEventListener("resize",()=>{
-  camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
 });
 
-// LIGHT
-scene.add(new THREE.AmbientLight(0xffffff,0.6));
-const sun = new THREE.DirectionalLight(0xffffff,0.8);
-sun.position.set(50,100,50);
+/* LIGHT */
+scene.add(new THREE.AmbientLight(0xffffff,0.7));
+const sun=new THREE.DirectionalLight(0xffffff,0.6);
+sun.position.set(100,200,100);
 scene.add(sun);
 
-// TEXTURES
+/* TEXTURES (PIXEL LOOK!) */
 const loader=new THREE.TextureLoader();
+function loadTex(name){
+ const t=loader.load(name);
+ t.magFilter=THREE.NearestFilter;
+ t.minFilter=THREE.NearestFilter;
+ return t;
+}
 const tex={
- grass:loader.load("grass.png"),
- dirt:loader.load("dirt.png"),
- stone:loader.load("stone.png"),
- sand:loader.load("sand.png"),
- wood:loader.load("wood.png"),
- leaves:loader.load("leaves.png")
+ grass:loadTex("grass.png"),
+ dirt:loadTex("dirt.png"),
+ stone:loadTex("stone.png"),
+ sand:loadTex("sand.png"),
+ wood:loadTex("wood.png"),
+ leaves:loadTex("leaves.png")
 };
 
-// PLAYER
+/* PLAYER */
 const player={
- pos:new THREE.Vector3(0,5,0),
+ pos:new THREE.Vector3(0,3,0),
  vel:new THREE.Vector3(),
  yaw:0,pitch:0,
- onGround:false,
- thirdPerson:false
+ third:false
 };
 
-// INVENTORY
+/* INVENTORY */
 let inventory=JSON.parse(localStorage.getItem(user+"_inv"))||
-{grass:10,dirt:10,stone:10,sand:10,wood:5,leaves:5};
-
+{grass:20,dirt:20,stone:20,sand:10};
 let selected="grass";
-const hotbar=document.getElementById("hotbar");
 
+const hotbar=document.getElementById("hotbar");
 function updateHotbar(){
  hotbar.innerHTML="";
  for(const k in inventory){
   const b=document.createElement("button");
   b.textContent=`${k} (${inventory[k]})`;
   if(k===selected) b.style.border="2px solid yellow";
-  b.onclick=()=>{selected=k; updateHotbar();};
+  b.onclick=()=>{selected=k;updateHotbar();};
   hotbar.appendChild(b);
  }
 }
 updateHotbar();
 
-function save(){
- localStorage.setItem(user+"_inv",JSON.stringify(inventory));
- localStorage.setItem(user+"_world",JSON.stringify(worldData));
-}
-
-// BLOCKS + WORLD SAVE
+/* BLOCKS */
 const blocks=[];
-const worldData=JSON.parse(localStorage.getItem(user+"_world"))||{};
+const world=JSON.parse(localStorage.getItem(user+"_world"))||{};
+const geo=new THREE.BoxGeometry(1,1,1);
 
-function addBlock(x,y,z,type,saveBlock=true){
- const geo=new THREE.BoxGeometry(1,1,1);
- const mat=new THREE.MeshStandardMaterial({map:tex[type]});
+function addBlock(x,y,z,type,save=true){
+ const mat=new THREE.MeshLambertMaterial({map:tex[type]});
  const mesh=new THREE.Mesh(geo,mat);
  mesh.position.set(x+0.5,y+0.5,z+0.5);
  scene.add(mesh);
  blocks.push({x,y,z,type,mesh});
- if(saveBlock){
-   worldData[`${x},${y},${z}`]=type;
-   save();
- }
+ if(save){world[`${x},${y},${z}`]=type;saveWorld();}
 }
 
 function removeBlock(b){
  scene.remove(b.mesh);
- delete worldData[`${b.x},${b.y},${b.z}`];
+ delete world[`${b.x},${b.y},${b.z}`];
  blocks.splice(blocks.indexOf(b),1);
- save();
+ saveWorld();
 }
 
-// LOAD WORLD
-for(const k in worldData){
+function saveWorld(){
+ localStorage.setItem(user+"_world",JSON.stringify(world));
+ localStorage.setItem(user+"_inv",JSON.stringify(inventory));
+}
+
+/* LOAD SAVED BLOCKS */
+for(const k in world){
  const [x,y,z]=k.split(",").map(Number);
- addBlock(x,y,z,worldData[k],false);
+ addBlock(x,y,z,world[k],false);
 }
 
-// GENERATE CHUNKS
+/* CHUNKS */
 const chunks=new Set();
 function genChunk(cx,cz){
- for(let x=cx;x<cx+10;x++){
-  for(let z=cz;z<cz+10;z++){
-   for(let y=0;y<3;y++){
-    if(!worldData[`${x},${y},${z}`])
-      addBlock(x,y,z,y<2?"stone":"grass");
+ for(let x=cx;x<cx+16;x++){
+  for(let z=cz;z<cz+16;z++){
+   const h=2+Math.floor(Math.random()*2);
+   for(let y=0;y<=h;y++){
+    if(!world[`${x},${y},${z}`])
+     addBlock(x,y,z,y<h?"dirt":"grass");
    }
   }
  }
 }
-
 function loadChunks(){
- const cx=Math.floor(player.pos.x/10)*10;
- const cz=Math.floor(player.pos.z/10)*10;
- for(let dx=-20;dx<=20;dx+=10){
-  for(let dz=-20;dz<=20;dz+=10){
+ const cx=Math.floor(player.pos.x/16)*16;
+ const cz=Math.floor(player.pos.z/16)*16;
+ for(let dx=-32;dx<=32;dx+=16)
+  for(let dz=-32;dz<=32;dz+=16){
    const k=`${cx+dx},${cz+dz}`;
-   if(!chunks.has(k)){ genChunk(cx+dx,cz+dz); chunks.add(k); }
+   if(!chunks.has(k)){genChunk(cx+dx,cz+dz);chunks.add(k);}
   }
- }
 }
 loadChunks();
 
-// RAYCAST
+/* RAYCAST */
 const ray=new THREE.Raycaster();
-function getTarget(){
+function target(){
  ray.setFromCamera({x:0,y:0},camera);
  const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0];
  return hit?blocks.find(b=>b.mesh===hit.object):null;
 }
 
-// INPUT
-addEventListener("mousedown",e=>{
- const t=getTarget();
- if(!t) return;
- if(e.button===0){ // mine
-   removeBlock(t);
-   inventory[t.type]++;
- } else if(e.button===2 && inventory[selected]>0){
-   addBlock(t.x,t.y+1,t.z,selected);
-   inventory[selected]--;
- }
- updateHotbar();
-});
+/* INPUT */
+renderer.domElement.onclick=()=>renderer.domElement.requestPointerLock();
 
-// CAMERA LOOK
 addEventListener("mousemove",e=>{
  if(document.pointerLockElement!==renderer.domElement) return;
- player.yaw -= e.movementX*0.002;
- player.pitch -= e.movementY*0.002;
+ player.yaw-=e.movementX*0.002;
+ player.pitch-=e.movementY*0.002;
  player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch));
 });
 
-renderer.domElement.onclick=()=>renderer.domElement.requestPointerLock();
-
-// FIRST / THIRD PERSON
-addEventListener("keydown",e=>{
- if(e.key==="v") player.thirdPerson=!player.thirdPerson;
+addEventListener("mousedown",e=>{
+ const t=target(); if(!t) return;
+ if(e.button===0){ removeBlock(t); inventory[t.type]++; }
+ if(e.button===2 && inventory[selected]>0){
+  addBlock(t.x,t.y+1,t.z,selected);
+  inventory[selected]--;
+ }
+ updateHotbar(); saveWorld();
 });
 
-// LOOP
+addEventListener("keydown",e=>{
+ if(e.key==="v") player.third=!player.third;
+});
+
+/* LOOP */
 const clock=new THREE.Clock();
 function animate(){
  requestAnimationFrame(animate);
@@ -195,15 +182,17 @@ function animate(){
 
  loadChunks();
 
- const camDist=player.thirdPerson?4:0;
  const dir=new THREE.Vector3(
   Math.sin(player.yaw)*Math.cos(player.pitch),
   Math.sin(player.pitch),
  -Math.cos(player.yaw)*Math.cos(player.pitch)
  );
 
- camera.position.copy(player.pos).addScaledVector(dir,-camDist).add(new THREE.Vector3(0,1.6,0));
- camera.lookAt(player.pos.clone().add(dir));
+ const camDist=player.third?4:0;
+ camera.position.copy(player.pos)
+  .add(new THREE.Vector3(0,1.62,0))
+  .addScaledVector(dir,-camDist);
+ camera.lookAt(player.pos.clone().add(new THREE.Vector3(0,1.62,0)).add(dir));
 
  renderer.render(scene,camera);
 }
