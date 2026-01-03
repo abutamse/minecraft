@@ -5,7 +5,7 @@
 <title>Mini Minecraft</title>
 
 <style>
-body { margin:0; overflow:hidden; font-family:sans-serif; }
+body { margin:0; overflow:hidden; font-family:sans-serif; background:black; }
 canvas { display:block; }
 
 #hotbar {
@@ -15,9 +15,16 @@ canvas { display:block; }
   transform:translateX(-50%);
   display:flex;
   gap:5px;
-  background:rgba(0,0,0,0.5);
+  background:rgba(0,0,0,0.6);
+  padding:6px;
+  border-radius:6px;
+}
+
+#hotbar button {
+  background:#333;
+  color:white;
+  border:1px solid #555;
   padding:5px;
-  border-radius:5px;
 }
 
 #loginForm {
@@ -25,19 +32,13 @@ canvas { display:block; }
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
-  background:rgba(0,0,0,0.7);
+  background:rgba(0,0,0,0.8);
   padding:20px;
   border-radius:10px;
   color:white;
   display:flex;
   flex-direction:column;
   gap:10px;
-}
-
-#loginForm input,
-#loginForm button {
-  padding:8px;
-  font-size:14px;
 }
 </style>
 </head>
@@ -48,9 +49,9 @@ canvas { display:block; }
 
 <div id="loginForm">
   <h3>Login / Registrierung</h3>
-  <input type="text" id="username" placeholder="Benutzername">
-  <input type="password" id="password" placeholder="Passwort">
-  <button id="loginBtn">Login / Registrieren</button>
+  <input id="username" placeholder="Name">
+  <input id="password" type="password" placeholder="Passwort">
+  <button id="loginBtn">Start</button>
   <div id="loginMsg"></div>
 </div>
 
