@@ -6,7 +6,7 @@
 <title>Mini Minecraft</title>
 
 <style>
-html, body {
+html,body{
   margin:0;
   padding:0;
   width:100%;
@@ -15,16 +15,14 @@ html, body {
   background:black;
 }
 
-canvas {
+canvas{
   position:fixed;
-  top:0;
-  left:0;
+  inset:0;
   width:100%;
   height:100%;
-  display:block;
 }
 
-#hotbar {
+#hotbar{
   position:fixed;
   bottom:10px;
   left:50%;
@@ -37,7 +35,7 @@ canvas {
   z-index:10;
 }
 
-#hotbar button {
+#hotbar button{
   background:#333;
   color:white;
   border:1px solid #666;
@@ -45,38 +43,38 @@ canvas {
   border-radius:4px;
 }
 
-.control {
-  position:fixed;
-  background:rgba(0,0,0,0.5);
-  color:white;
-  padding:14px;
-  border-radius:50%;
-  user-select:none;
-  z-index:10;
-}
-
-#jump { right:20px; bottom:100px; }
-#mine { right:20px; bottom:40px; }
-
-#joystick {
+#joystick{
   position:fixed;
   left:20px;
-  bottom:40px;
+  bottom:20px;
   width:120px;
   height:120px;
-  background:rgba(255,255,255,0.1);
   border-radius:50%;
+  background:rgba(255,255,255,0.15);
   z-index:10;
 }
-#stick {
+#stick{
   position:absolute;
   left:40px;
   top:40px;
   width:40px;
   height:40px;
-  background:rgba(255,255,255,0.6);
   border-radius:50%;
+  background:rgba(255,255,255,0.7);
 }
+
+.control{
+  position:fixed;
+  right:20px;
+  padding:14px;
+  background:rgba(0,0,0,0.6);
+  color:white;
+  border-radius:8px;
+  z-index:10;
+  user-select:none;
+}
+#jump{ bottom:100px; }
+#mine{ bottom:40px; }
 </style>
 </head>
 
