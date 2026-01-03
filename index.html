@@ -14,12 +14,8 @@ html,body{
   overflow:hidden;
   background:black;
 }
-canvas{
-  position:fixed;
-  inset:0;
-}
+canvas{ position:fixed; inset:0; }
 
-/* UI */
 #hotbar,#weapons,#food,#stats{
   position:fixed;
   display:flex;
@@ -33,7 +29,7 @@ canvas{
 #hotbar{ bottom:10px; left:50%; transform:translateX(-50%); }
 #weapons{ bottom:60px; left:50%; transform:translateX(-50%); }
 #food{ bottom:110px; left:50%; transform:translateX(-50%); }
-#stats{ top:10px; left:10px; flex-direction:column; }
+#stats{ top:10px; left:10px; flex-direction:column; color:white; }
 
 button{
   background:#333;
@@ -43,7 +39,6 @@ button{
   border-radius:4px;
 }
 
-/* Crosshair */
 #crosshair{
   position:fixed;
   top:50%;
@@ -51,11 +46,9 @@ button{
   transform:translate(-50%,-50%);
   color:white;
   font-size:24px;
-  z-index:5;
   pointer-events:none;
 }
 
-/* Joystick */
 #joystick{
   position:fixed;
   left:20px;
@@ -64,7 +57,6 @@ button{
   height:120px;
   border-radius:50%;
   background:rgba(255,255,255,0.15);
-  z-index:10;
 }
 #stick{
   position:absolute;
@@ -83,12 +75,10 @@ button{
   background:rgba(0,0,0,0.6);
   color:white;
   border-radius:8px;
-  z-index:10;
-  user-select:none;
 }
 #jump{ bottom:120px; }
 #mine{ bottom:60px; }
-#build{ bottom:0px; }
+#build{ bottom:0; }
 </style>
 </head>
 
@@ -99,6 +89,7 @@ button{
 <div id="stats">
   <div id="hunger">🍖 Hunger: 100%</div>
   <div id="coins">🪙 Münzen: 0</div>
+  <div id="health">❤️ Leben: 100</div>
 </div>
 
 <div id="food"></div>
