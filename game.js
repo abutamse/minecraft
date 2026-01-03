@@ -1,200 +1,160 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
 
-/* ---------- LOGIN ---------- */
-let user;
-loginBtn.onclick = () => {
- const u=username.value.trim(), p=password.value.trim();
- if(!u||!p){loginMsg.textContent="Fehlt";return;}
- const users=JSON.parse(localStorage.getItem("users"))||{};
- if(users[u] && users[u].password!==p){loginMsg.textContent="Falsch";return;}
- users[u]={password:p};
- localStorage.setItem("users",JSON.stringify(users));
- user=u;
- loginForm.style.display="none";
- startGame();
-};
+/* ---------- BASIC ---------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
 
-/* ---------- GAME ---------- */
-function startGame(){
-
-/* BASIC */
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x87ceeb);
-
-const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
-const renderer=new THREE.WebGLRenderer({antialias:false});
-renderer.setSize(innerWidth,innerHeight);
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({antialias:false});
+renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 addEventListener("resize",()=>{
- camera.aspect=innerWidth/innerHeight;
- camera.updateProjectionMatrix();
- renderer.setSize(innerWidth,innerHeight);
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
 });
 
-/* LIGHT */
+/* ---------- LIGHT ---------- */
 scene.add(new THREE.AmbientLight(0xffffff,0.7));
 const sun=new THREE.DirectionalLight(0xffffff,0.6);
 sun.position.set(100,200,100);
 scene.add(sun);
 
-/* TEXTURES (PIXEL LOOK!) */
+/* ---------- TEXTURES ---------- */
 const loader=new THREE.TextureLoader();
-function loadTex(name){
+function tex(name){
  const t=loader.load(name);
  t.magFilter=THREE.NearestFilter;
  t.minFilter=THREE.NearestFilter;
  return t;
 }
-const tex={
- grass:loadTex("grass.png"),
- dirt:loadTex("dirt.png"),
- stone:loadTex("stone.png"),
- sand:loadTex("sand.png"),
- wood:loadTex("wood.png"),
- leaves:loadTex("leaves.png")
+const textures={
+ grass:tex("grass.png"),
+ dirt:tex("dirt.png"),
+ stone:tex("stone.png"),
+ sand:tex("sand.png")
 };
 
-/* PLAYER */
-const player={
- pos:new THREE.Vector3(0,3,0),
- vel:new THREE.Vector3(),
- yaw:0,pitch:0,
- third:false
-};
-
-/* INVENTORY */
-let inventory=JSON.parse(localStorage.getItem(user+"_inv"))||
-{grass:20,dirt:20,stone:20,sand:10};
-let selected="grass";
-
-const hotbar=document.getElementById("hotbar");
-function updateHotbar(){
- hotbar.innerHTML="";
- for(const k in inventory){
-  const b=document.createElement("button");
-  b.textContent=`${k} (${inventory[k]})`;
-  if(k===selected) b.style.border="2px solid yellow";
-  b.onclick=()=>{selected=k;updateHotbar();};
-  hotbar.appendChild(b);
- }
-}
-updateHotbar();
-
-/* BLOCKS */
+/* ---------- WORLD ---------- */
 const blocks=[];
-const world=JSON.parse(localStorage.getItem(user+"_world"))||{};
 const geo=new THREE.BoxGeometry(1,1,1);
 
-function addBlock(x,y,z,type,save=true){
- const mat=new THREE.MeshLambertMaterial({map:tex[type]});
+function addBlock(x,y,z,type){
+ const mat=new THREE.MeshLambertMaterial({map:textures[type]});
  const mesh=new THREE.Mesh(geo,mat);
  mesh.position.set(x+0.5,y+0.5,z+0.5);
  scene.add(mesh);
- blocks.push({x,y,z,type,mesh});
- if(save){world[`${x},${y},${z}`]=type;saveWorld();}
+ blocks.push({x,y,z,mesh});
 }
 
-function removeBlock(b){
- scene.remove(b.mesh);
- delete world[`${b.x},${b.y},${b.z}`];
- blocks.splice(blocks.indexOf(b),1);
- saveWorld();
-}
+// simple flat world
+for(let x=-20;x<20;x++)
+ for(let z=-20;z<20;z++)
+  addBlock(x,0,z,"grass");
 
-function saveWorld(){
- localStorage.setItem(user+"_world",JSON.stringify(world));
- localStorage.setItem(user+"_inv",JSON.stringify(inventory));
-}
+/* ---------- PLAYER ---------- */
+const player={
+ pos:new THREE.Vector3(0,2,0),
+ vel:new THREE.Vector3(),
+ yaw:0,
+ pitch:0
+};
 
-/* LOAD SAVED BLOCKS */
-for(const k in world){
- const [x,y,z]=k.split(",").map(Number);
- addBlock(x,y,z,world[k],false);
-}
+/* ---------- JOYSTICK ---------- */
+const joystick=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+let joy={x:0,y:0}, joyActive=false;
 
-/* CHUNKS */
-const chunks=new Set();
-function genChunk(cx,cz){
- for(let x=cx;x<cx+16;x++){
-  for(let z=cz;z<cz+16;z++){
-   const h=2+Math.floor(Math.random()*2);
-   for(let y=0;y<=h;y++){
-    if(!world[`${x},${y},${z}`])
-     addBlock(x,y,z,y<h?"dirt":"grass");
-   }
+joystick.addEventListener("touchstart",e=>{joyActive=true});
+joystick.addEventListener("touchend",e=>{
+ joyActive=false;
+ joy={x:0,y:0};
+ stick.style.left="40px";
+ stick.style.top="40px";
+});
+joystick.addEventListener("touchmove",e=>{
+ if(!joyActive) return;
+ const r=joystick.getBoundingClientRect();
+ const t=e.touches[0];
+ let x=t.clientX-r.left-60;
+ let y=t.clientY-r.top-60;
+ const d=Math.min(40,Math.hypot(x,y));
+ const a=Math.atan2(y,x);
+ x=Math.cos(a)*d;
+ y=Math.sin(a)*d;
+ joy.x=x/40;
+ joy.y=y/40;
+ stick.style.left=40+x+"px";
+ stick.style.top=40+y+"px";
+});
+
+/* ---------- CAMERA TOUCH LOOK ---------- */
+let lookActive=false, last={x:0,y:0};
+
+addEventListener("touchstart",e=>{
+ for(const t of e.touches){
+  if(t.clientX>innerWidth/2){
+   lookActive=true;
+   last={x:t.clientX,y:t.clientY};
   }
  }
-}
-function loadChunks(){
- const cx=Math.floor(player.pos.x/16)*16;
- const cz=Math.floor(player.pos.z/16)*16;
- for(let dx=-32;dx<=32;dx+=16)
-  for(let dz=-32;dz<=32;dz+=16){
-   const k=`${cx+dx},${cz+dz}`;
-   if(!chunks.has(k)){genChunk(cx+dx,cz+dz);chunks.add(k);}
+});
+
+addEventListener("touchmove",e=>{
+ if(!lookActive) return;
+ for(const t of e.touches){
+  if(t.clientX>innerWidth/2){
+   const dx=t.clientX-last.x;
+   const dy=t.clientY-last.y;
+   player.yaw -= dx*0.004;
+   player.pitch -= dy*0.004;
+   player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch));
+   last={x:t.clientX,y:t.clientY};
   }
-}
-loadChunks();
-
-/* RAYCAST */
-const ray=new THREE.Raycaster();
-function target(){
- ray.setFromCamera({x:0,y:0},camera);
- const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0];
- return hit?blocks.find(b=>b.mesh===hit.object):null;
-}
-
-/* INPUT */
-renderer.domElement.onclick=()=>renderer.domElement.requestPointerLock();
-
-addEventListener("mousemove",e=>{
- if(document.pointerLockElement!==renderer.domElement) return;
- player.yaw-=e.movementX*0.002;
- player.pitch-=e.movementY*0.002;
- player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch));
-});
-
-addEventListener("mousedown",e=>{
- const t=target(); if(!t) return;
- if(e.button===0){ removeBlock(t); inventory[t.type]++; }
- if(e.button===2 && inventory[selected]>0){
-  addBlock(t.x,t.y+1,t.z,selected);
-  inventory[selected]--;
  }
- updateHotbar(); saveWorld();
 });
 
-addEventListener("keydown",e=>{
- if(e.key==="v") player.third=!player.third;
-});
+addEventListener("touchend",()=>lookActive=false);
 
-/* LOOP */
+/* ---------- JUMP ---------- */
+document.getElementById("jump").onclick=()=>{
+ if(player.pos.y<=2.01) player.vel.y=6;
+};
+
+/* ---------- LOOP ---------- */
 const clock=new THREE.Clock();
 function animate(){
  requestAnimationFrame(animate);
  const dt=clock.getDelta();
 
- player.vel.y-=9.8*dt;
+ const speed=5;
+ const forward=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
+ const right=new THREE.Vector3(-forward.z,0,forward.x);
+
+ player.vel.addScaledVector(forward, -joy.y*speed*dt);
+ player.vel.addScaledVector(right, joy.x*speed*dt);
+
+ player.vel.y -= 9.8*dt;
  player.pos.addScaledVector(player.vel,dt);
- if(player.pos.y<2){player.pos.y=2;player.vel.y=0;}
 
- loadChunks();
+ if(player.pos.y<2){
+  player.pos.y=2;
+  player.vel.y=0;
+ }
 
- const dir=new THREE.Vector3(
+ player.vel.multiplyScalar(0.85);
+
+ const lookDir=new THREE.Vector3(
   Math.sin(player.yaw)*Math.cos(player.pitch),
   Math.sin(player.pitch),
  -Math.cos(player.yaw)*Math.cos(player.pitch)
  );
 
- const camDist=player.third?4:0;
- camera.position.copy(player.pos)
-  .add(new THREE.Vector3(0,1.62,0))
-  .addScaledVector(dir,-camDist);
- camera.lookAt(player.pos.clone().add(new THREE.Vector3(0,1.62,0)).add(dir));
+ camera.position.copy(player.pos).add(new THREE.Vector3(0,1.6,0));
+ camera.lookAt(camera.position.clone().add(lookDir));
 
  renderer.render(scene,camera);
 }
 animate();
-}
