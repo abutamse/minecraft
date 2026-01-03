@@ -2,21 +2,24 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.mod
 
 /* ================== LOGIN ================== */
 let playerName = null;
-
 const login = document.getElementById("login");
 const startBtn = document.getElementById("startBtn");
 const nameInput = document.getElementById("nameInput");
 
 startBtn.onclick = () => {
-  if(!nameInput.value.trim()) return;
-  playerName = nameInput.value.trim();
+  const name = nameInput.value.trim();
+  if (!name) { alert("Bitte einen gültigen Namen eingeben!"); return; }
+  playerName = name;
   login.style.display = "none";
   initGame();
 };
 
-function key(k){ return `${k}_${playerName}`; }
+function key(k){ 
+  if(!playerName) return k+"_default"; 
+  return `${k}_${playerName}`; 
+}
 
-/* ================== GAME INIT ================== */
+/* ================== GAME ================== */
 function initGame(){
 
 /* ---------- BASIC ---------- */
@@ -49,7 +52,8 @@ const player={
   yaw:0,pitch:0,
   hp:Number(localStorage.getItem(key("hp")))||100,
   hunger:Number(localStorage.getItem(key("hunger")))||100,
-  coins:Number(localStorage.getItem(key("coins")))||0
+  coins:Number(localStorage.getItem(key("coins")))||0,
+  onGround:false
 };
 
 /* ---------- UI ---------- */
@@ -119,7 +123,6 @@ for(let x=-20;x<20;x++)
 
 /* ---------- INVENTORY ---------- */
 let food=Number(localStorage.getItem(key("food"))||0);
-
 function updateFoodUI(){
   foodUI.innerHTML="";
   const btn=document.createElement("button");
@@ -175,7 +178,6 @@ function weaponDamage(){ return weapons.find(w=>w.name===currentWeapon)?.dmg||5;
 /* ---------- MOBS ---------- */
 const mobs=[];
 const mobGeo=new THREE.BoxGeometry(0.8,0.8,0.8);
-
 function spawnMob(type){
   const mat=new THREE.MeshLambertMaterial({color:type==="animal"?0x996633:0xaa0000});
   const mesh=new THREE.Mesh(mobGeo,mat);
@@ -183,19 +185,13 @@ function spawnMob(type){
   scene.add(mesh);
   mobs.push({type,mesh,hp:type==="animal"?20:40,vel:new THREE.Vector3()});
 }
-
-/* Spawn animals & monsters */
 for(let i=0;i<5;i++) spawnMob("animal");
 
 /* ---------- PROJECTILES ---------- */
 const projectiles=[];
-
 function shootProjectile(){
-  const dir=new THREE.Vector3(Math.sin(player.yaw),0, -Math.cos(player.yaw)).normalize();
-  const proj=new THREE.Mesh(
-    new THREE.SphereGeometry(0.1,6,6),
-    new THREE.MeshBasicMaterial({color:0xffff00})
-  );
+  const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw)).normalize();
+  const proj=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6), new THREE.MeshBasicMaterial({color:0xffff00}));
   proj.position.copy(player.pos).add(new THREE.Vector3(0,1.5,0));
   scene.add(proj);
   projectiles.push({mesh:proj,dir,damage:weaponDamage(),life:3});
@@ -203,13 +199,11 @@ function shootProjectile(){
 
 /* ---------- RAYCAST ---------- */
 const ray=new THREE.Raycaster();
-
 function getTargetBlock(){
   ray.setFromCamera({x:0,y:0},camera);
   const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0];
   return hit?blocks.find(b=>b.mesh===hit.object):null;
 }
-
 function hitMob(){
   ray.setFromCamera({x:0,y:0},camera);
   const hit=ray.intersectObjects(mobs.map(m=>m.mesh))[0];
@@ -221,8 +215,7 @@ function hitMob(){
     scene.remove(mob.mesh);
     mobs.splice(mobs.indexOf(mob),1);
     player.coins+=mob.type==="animal"?10:25;
-    if(mob.type==="animal") food++;
-    localStorage.setItem(key("food"),food);
+    if(mob.type==="animal"){ food++; localStorage.setItem(key("food"),food); }
   }
 }
 
@@ -230,7 +223,6 @@ function hitMob(){
 const joystick=document.getElementById("joystick");
 const stick=document.getElementById("stick");
 let joy={x:0,y:0},active=false;
-
 joystick.ontouchstart=()=>active=true;
 joystick.ontouchend=()=>{ active=false; joy={x:0,y:0}; stick.style.left="40px"; stick.style.top="40px"; };
 joystick.ontouchmove=e=>{
@@ -241,35 +233,25 @@ joystick.ontouchmove=e=>{
   let y=t.clientY-r.top-60;
   const d=Math.min(40,Math.hypot(x,y));
   const a=Math.atan2(y,x);
-  joy.x=Math.cos(a)*d/40;
-  joy.y=Math.sin(a)*d/40;
-  stick.style.left=40+joy.x*40+"px";
-  stick.style.top=40+joy.y*40+"px";
+  joy.x=Math.cos(a)*d/40; joy.y=Math.sin(a)*d/40;
+  stick.style.left=40+joy.x*40+"px"; stick.style.top=40+joy.y*40+"px";
 };
 
-/* Buttons */
 const jump=document.getElementById("jump");
 const mine=document.getElementById("mine");
 const build=document.getElementById("build");
 const shootBtn=document.getElementById("shoot");
-
-jump.onclick=()=>{ if(player.pos.y<=3.01) player.vel.y=6; };
-mine.onclick=()=>{
-  const b=getTargetBlock();
-  if(b) removeBlock(b);
-  else hitMob();
-};
+jump.onclick=()=>{ if(player.onGround) player.vel.y=6; };
+mine.onclick=()=>{ const b=getTargetBlock(); if(b) removeBlock(b); else hitMob(); };
 build.onclick=()=>{ const b=getTargetBlock(); if(!b) return; addBlock(b.x,b.y+1,b.z,"wood"); };
 shootBtn.onclick=shootProjectile;
 
 /* ---------- ANIMATE LOOP ---------- */
 const clock=new THREE.Clock();
 let time=0;
-
 function animate(){
   requestAnimationFrame(animate);
-  const dt=clock.getDelta();
-  time+=dt;
+  const dt=clock.getDelta(); time+=dt;
 
   // Tag/Nacht
   const day=Math.sin(time*0.05)*0.5+0.5;
@@ -280,15 +262,29 @@ function animate(){
   player.hunger-=dt*(100/300);
   if(player.hunger<=0) player.hp-=dt*5;
 
-  // Bewegung
+  // Bewegung + Kollisionsphysik
   const speed=5;
   const fwd=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
   const right=new THREE.Vector3(-fwd.z,0,fwd.x);
+
   player.vel.addScaledVector(fwd,-joy.y*speed*dt);
   player.vel.addScaledVector(right,joy.x*speed*dt);
   player.vel.y-=9.8*dt;
-  player.pos.addScaledVector(player.vel,dt);
-  if(player.pos.y<2){ player.pos.y=2; player.vel.y=0; }
+
+  // Kollisionsprüfung
+  const newPos=player.pos.clone().addScaledVector(player.vel,dt);
+  let onGround=false;
+  for(const b of blocks){
+    if(newPos.x+0.5>b.x && newPos.x-0.5<b.x+1 &&
+       newPos.y+0.0>b.y && newPos.y-1< b.y+1 &&
+       newPos.z+0.5>b.z && newPos.z-0.5<b.z+1){
+      // Kollisionsreaktion
+      if(player.vel.y<0) { newPos.y=b.y+1; player.vel.y=0; onGround=true; }
+      else if(player.vel.y>0) newPos.y=b.y-1; player.vel.y=0;
+    }
+  }
+  player.pos.copy(newPos);
+  player.onGround=onGround;
 
   player.vel.multiplyScalar(0.85);
 
@@ -327,6 +323,4 @@ function animate(){
   localStorage.setItem(key("hunger"),player.hunger);
   localStorage.setItem(key("coins"),player.coins);
 }
-
 animate();
-}
