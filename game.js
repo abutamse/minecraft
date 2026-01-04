@@ -25,7 +25,10 @@ function initGame(){
 /* ===== SCENE & CAMERA ===== */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
-const camera=new THREE.PerspectiveCamera(65,window.innerWidth/window.innerHeight,.1,1000); // engeres FOV für Übersicht
+
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
+camera.position.set(0,1.8,0);
+
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth,window.innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
@@ -37,14 +40,14 @@ window.addEventListener("resize",()=>{
     renderer.setSize(window.innerWidth,window.innerHeight);
 });
 
-/* ===== UI / FADENKREUZ ===== */
+/* ===== CROSSHAIR ===== */
 const cross=document.createElement("div");
 cross.style="position:fixed;top:50%;left:50%;width:6px;height:6px;background:yellow;transform:translate(-50%,-50%);z-index:20";
 document.body.appendChild(cross);
 
 /* ===== LIGHT ===== */
-scene.add(new THREE.AmbientLight(0xffffff,.7));
-const sun=new THREE.DirectionalLight(0xffffff,.6);
+scene.add(new THREE.AmbientLight(0xffffff,0.7));
+const sun=new THREE.DirectionalLight(0xffffff,0.6);
 sun.position.set(100,200,100);
 scene.add(sun);
 
@@ -72,7 +75,7 @@ const player={
 };
 
 /* ===== WORLD ===== */
-const blockGeo=new THREE.BoxGeometry(0.98,0.98,0.98); // kleiner für lückenfrei
+const blockGeo=new THREE.BoxGeometry(0.98,0.98,0.98);
 const blocks=[];
 const world={};
 const chunks=new Set();
@@ -86,24 +89,32 @@ function addBlock(x,y,z,type){
     blocks.push({x,y,z,mesh:m,type});
     world[k]=type;
 }
+
 function removeBlock(x,y,z){
     const k=`${x},${y},${z}`;
     const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);
-    if(i>-1){const type=blocks[i].type; scene.remove(blocks[i].mesh); blocks.splice(i,1); delete world[k]; inventory[type]=(inventory[type]||0)+1; updateHotbarUI();}
+    if(i>-1){
+        const type=blocks[i].type;
+        scene.remove(blocks[i].mesh);
+        blocks.splice(i,1);
+        delete world[k];
+        inventory[type]=(inventory[type]||0)+1;
+        updateHotbarUI();
+    }
 }
 
 /* ===== TERRAIN ===== */
 function genChunk(cx,cz){
     for(let x=cx;x<cx+16;x++)
     for(let z=cz;z<cz+16;z++){
-        let height=Math.floor(Math.sin(x*.1)*5+Math.cos(z*.1)*5+Math.random()*2)+5;
+        let height=Math.floor(Math.sin(x*0.1)*5+Math.cos(z*0.1)*5+Math.random()*2)+5;
         for(let y=0;y<=height;y++){
             let type="stone";
             if(y>height-3) type="dirt";
-            if(y===height) type=Math.random()<.2?"sand":"grass";
+            if(y===height) type=Math.random()<0.2?"sand":"grass";
             addBlock(x,y,z,type);
         }
-        if(Math.random()<.08){
+        if(Math.random()<0.08){
             const h=3+Math.floor(Math.random()*2);
             for(let i=1;i<=h;i++) addBlock(x,height+i,z,"wood");
             for(let dx=-1;dx<=1;dx++)
@@ -112,6 +123,7 @@ function genChunk(cx,cz){
         if(height<4) for(let y=height+1;y<=3;y++) addBlock(x,y,z,"water");
     }
 }
+
 function loadChunks(){
     const cx=Math.floor(player.pos.x/16)*16;
     const cz=Math.floor(player.pos.z/16)*16;
@@ -130,7 +142,7 @@ function collide(pos){
     return false;
 }
 
-/* ===== INVENTAR ===== */
+/* ===== INVENTORY ===== */
 let inventory={grass:5,dirt:5,stone:5,sand:5,wood:5};
 let selected="grass"; let food=0; let weapons={"knife":true}; let currentWeapon="knife";
 function updateHotbarUI(){
@@ -179,21 +191,41 @@ window.addEventListener("touchstart",e=>{for(const t of e.touches) if(t.clientX>
 window.addEventListener("touchmove",e=>{if(!look) return; for(const t of e.touches) if(t.clientX>window.innerWidth/2){player.yaw-=(t.clientX-last.x)*0.004; player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch-(t.clientY-last.y)*0.004)); last={x:t.clientX,y:t.clientY};}});
 window.addEventListener("touchend",()=>look=false);
 
+/* ===== RAYCASTING FÜR BAUEN/GRABEN ===== */
+const raycaster = new THREE.Raycaster();
+function getTargetBlock(){
+    raycaster.setFromCamera(new THREE.Vector2(0,0),camera); // Fadenkreuz-Mitte
+    const intersects = raycaster.intersectObjects(blocks.map(b=>b.mesh));
+    if(intersects.length>0){
+        const face = intersects[0].face;
+        const point = intersects[0].point;
+        const normal = face.normal;
+        const pos = intersects[0].object.position.clone();
+        return {pos,normal};
+    }
+    return null;
+}
+
 /* ===== ACTION BUTTONS ===== */
 jumpBtn.addEventListener("touchstart",()=>{if(player.onGround){player.vel.y=6;player.onGround=false;}},{passive:false});
 mineBtn.addEventListener("touchstart",()=>{
-    const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
-    const p=player.pos.clone().add(dir);
-    removeBlock(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z));
+    const target=getTargetBlock();
+    if(target){
+        removeBlock(Math.floor(target.pos.x),Math.floor(target.pos.y),Math.floor(target.pos.z));
+    }
 },{passive:false});
 buildBtn.addEventListener("touchstart",()=>{
     if(inventory[selected]<=0) return;
-    const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
-    const p=player.pos.clone().add(dir);
-    const px=Math.floor(p.x),py=Math.floor(p.y),pz=Math.floor(p.z);
-    if(!collide(new THREE.Vector3(px+0.5,py+0.5,pz+0.5))){
-        addBlock(px,py,pz,selected);
-        inventory[selected]--;updateHotbarUI();
+    const target=getTargetBlock();
+    if(target){
+        const px=Math.floor(target.pos.x + target.normal.x);
+        const py=Math.floor(target.pos.y + target.normal.y);
+        const pz=Math.floor(target.pos.z + target.normal.z);
+        if(!collide(new THREE.Vector3(px+0.5,py+0.5,pz+0.5))){
+            addBlock(px,py,pz,selected);
+            inventory[selected]--;
+            updateHotbarUI();
+        }
     }
 },{passive:false});
 
