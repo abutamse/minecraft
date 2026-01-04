@@ -31,6 +31,8 @@ function initGame() {
   window.renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(innerWidth, innerHeight);
   renderer.setPixelRatio(devicePixelRatio);
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
   document.body.appendChild(renderer.domElement);
 
   addEventListener("resize", () => {
@@ -61,7 +63,9 @@ function initGame() {
   const textures = {
     grass: tex("grass.png"),
     dirt: tex("dirt.png"),
-    stone: tex("stone.png")
+    stone: tex("stone.png"),
+    wood: tex("wood.png"),
+    leaves: tex("leaves.png")
   };
 
   /* ===== PLAYER ===== */
@@ -97,17 +101,17 @@ function initGame() {
 
   /* ===== WORLD ===== */
   window.blocks = [];
-  const map = {};
+  window.world = {};
   const geo = new THREE.BoxGeometry(1, 1, 1);
 
   window.addBlock = (x, y, z, t) => {
     const k = `${x},${y},${z}`;
-    if (map[k]) return;
+    if (world[k]) return;
     const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: textures[t] }));
     m.position.set(x + 0.5, y + 0.5, z + 0.5);
     scene.add(m);
-    blocks.push({ x, y, z, mesh: m });
-    map[k] = true;
+    blocks.push({ x, y, z, mesh: m, type: t });
+    world[k] = t;
   };
 
   window.removeBlock = (x, y, z) => {
@@ -115,7 +119,7 @@ function initGame() {
     if (i === -1) return;
     scene.remove(blocks[i].mesh);
     blocks.splice(i, 1);
-    delete map[`${x},${y},${z}`];
+    delete world[`${x},${y},${z}`];
   };
 
   /* ===== TERRAIN ===== */
@@ -143,7 +147,7 @@ function initGame() {
 
   while (collides(player.pos)) player.pos.y++;
 
-  /* ===== RAYCAST (GENAUES FADENKREUZ) ===== */
+  /* ===== RAYCAST (FADENKREUZ) ===== */
   const ray = new THREE.Raycaster();
   function target(add) {
     ray.setFromCamera({ x: 0, y: 0 }, camera);
@@ -173,12 +177,29 @@ function initGame() {
     }
   };
 
-  /* ===== LOOP ===== */
+  /* ===== INVENTAR + HOTBAR INIT ===== */
+  window.inventory = { grass: 10, dirt: 10, stone: 5, wood: 5, plank: 0, meat: 0 };
+  window.selectedBlockType = "grass";
+
+  function updateHotbarUI() {
+    hotbar.innerHTML = "";
+    for (const k in inventory) {
+      const d = document.createElement("div");
+      d.className = "slot" + (k === selectedBlockType ? " active" : "");
+      d.textContent = `${k}\n${inventory[k]}`;
+      d.onclick = () => { selectedBlockType = k; updateHotbarUI(); };
+      hotbar.appendChild(d);
+    }
+  }
+  updateHotbarUI();
+
+  /* ===== CLOCK & ANIMATE LOOP ===== */
   const clock = new THREE.Clock();
   function animate() {
     requestAnimationFrame(animate);
     const dt = clock.getDelta();
 
+    // Bewegung
     let mx = keys.d - keys.a;
     let mz = keys.s - keys.w;
     const l = Math.hypot(mx, mz);
@@ -192,6 +213,7 @@ function initGame() {
     player.pos.z += dz * 6 * dt;
     if (collides(player.pos)) player.pos.z -= dz * 6 * dt;
 
+    // Fall / Jump
     player.vel.y -= 9.8 * dt;
     player.pos.y += player.vel.y * dt;
     if (collides(player.pos)) {
@@ -200,6 +222,7 @@ function initGame() {
       player.pos.y = Math.ceil(player.pos.y);
     } else player.onGround = false;
 
+    // Kamera = ganze Bildschirm
     camera.position.set(player.pos.x, player.pos.y + 1.6, player.pos.z);
     camera.lookAt(camera.position.clone().add(
       new THREE.Vector3(Math.sin(player.yaw), Math.sin(player.pitch), -Math.cos(player.yaw))
@@ -213,34 +236,53 @@ function initGame() {
   }
   animate();
 }
-/* ===== TEIL 2 – TIERE & HUNGER ===== */
+/* =====================================================
+   TEIL 2 – TIERE, HUNGER, SCHIESSEN, CRAFT, SAVE, MULTIPLAYER
+   ===================================================== */
 
+/* ---------- TIERE ---------- */
 window.animals = [];
-window.bullets = [];
+
+const animalGeometry = new THREE.BoxGeometry(0.9, 0.9, 1.2);
+const animalMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+
+function findGroundY(x, z) {
+  let y = -1;
+  for (const b of blocks) {
+    if (b.x === Math.floor(x) && b.z === Math.floor(z)) {
+      if (b.y > y) y = b.y;
+    }
+  }
+  return y >= 0 ? y + 0.45 : null;
+}
+
+function spawnAnimalSafe(x, z) {
+  const y = findGroundY(x, z);
+  if (y === null) return;
+
+  const m = new THREE.Mesh(animalGeometry, animalMaterial.clone());
+  m.position.set(x + 0.5, y, z + 0.5);
+  scene.add(m);
+
+  animals.push({
+    mesh: m,
+    hp: 10,
+    dir: new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(),
+    time: 2 + Math.random() * 3
+  });
+}
+
+/* Tiere initial spawn */
+for (let i = 0; i < 6; i++) {
+  spawnAnimalSafe(Math.random() * 20 - 10, Math.random() * 20 - 10);
+}
+
+/* ---------- HUNGER ---------- */
 window.__hungerTimer = 0;
 
-function groundY(x, z) {
-  let y = -1;
-  for (const b of blocks)
-    if (b.x === Math.floor(x) && b.z === Math.floor(z))
-      if (b.y > y) y = b.y;
-  return y >= 0 ? y + 1 : null;
-}
+/* ---------- BULLETS ---------- */
+window.bullets = [];
 
-/* TIERE SPAWNEN */
-for (let i = 0; i < 6; i++) {
-  const y = groundY(i * 2 - 6, 0);
-  if (y === null) continue;
-  const m = new THREE.Mesh(
-    new THREE.BoxGeometry(0.9, 0.9, 1.2),
-    new THREE.MeshLambertMaterial({ color: 0xffffff })
-  );
-  m.position.set(i * 2 - 6 + 0.5, y + 0.45, 0.5);
-  scene.add(m);
-  animals.push({ mesh: m, hp: 10, dir: new THREE.Vector3(1, 0, 0) });
-}
-
-/* SCHIESSEN */
 shootBtn.ontouchstart = () => {
   const b = new THREE.Mesh(
     new THREE.SphereGeometry(0.1),
@@ -256,104 +298,72 @@ shootBtn.ontouchstart = () => {
   scene.add(b);
 };
 
-/* UPDATES */
-window.updateAnimals = dt => {
+/* ---------- UPDATE ANIMALS ---------- */
+function updateAnimals(dt) {
   for (const a of animals) {
-    const g = groundY(a.mesh.position.x, a.mesh.position.z);
-    if (g !== null) a.mesh.position.y = g + 0.45;
-  }
-};
+    a.time -= dt;
+    if (a.time <= 0) {
+      a.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+      a.time = 2 + Math.random() * 3;
+    }
 
-window.updateBullets = dt => {
+    const next = a.mesh.position.clone().add(a.dir.clone().multiplyScalar(1.2 * dt));
+    const ground = findGroundY(next.x, next.z);
+    if (ground !== null) next.y = ground;
+    a.mesh.position.copy(next);
+  }
+}
+
+/* ---------- UPDATE BULLETS ---------- */
+function updateBullets(dt) {
   for (let i = bullets.length - 1; i >= 0; i--) {
-    bullets[i].position.add(bullets[i].dir.clone().multiplyScalar(20 * dt));
+    const b = bullets[i];
+    b.position.add(b.dir.clone().multiplyScalar(20 * dt));
+
+    for (let j = animals.length - 1; j >= 0; j--) {
+      const a = animals[j];
+      if (b.position.distanceTo(a.mesh.position) < 0.6) {
+        a.hp -= 5;
+        scene.remove(b);
+        bullets.splice(i, 1);
+
+        if (a.hp <= 0) {
+          scene.remove(a.mesh);
+          animals.splice(j, 1);
+          inventory.meat = (inventory.meat || 0) + 1;
+          player.coins += 2;
+        }
+        break;
+      }
+    }
   }
-};
+}
 
-/* HUNGER */
-setInterval(() => {
-  player.hunger--;
-  if (player.hunger < 0) {
-    player.hunger = 0;
-    player.hp -= 2;
-  }
-}, 3000);
-
-/* LOOP ERWEITERN */
-const oldRender = renderer.render;
-renderer.render = function () {
-  updateAnimals(0.016);
-  updateBullets(0.016);
-  oldRender.apply(renderer, arguments);
-};
-/* =====================================================
-   TEIL 3 – BAU-MENÜ + CRAFTING (NUR EINFÜGEN)
-   ===================================================== */
-
-/* ---------- INVENTAR (SICHER) ---------- */
-window.inventory = window.inventory || {
-  grass: 10,
-  dirt: 10,
-  stone: 5,
-  wood: 5,
-  plank: 0,
-  meat: 0
-};
-
-/* ---------- UI CONTAINER ---------- */
+/* ---------- CRAFTING + BAU-MENÜ ---------- */
 const buildMenu = document.createElement("div");
 buildMenu.style = `
-  position:fixed;
-  right:10px;
-  top:50%;
-  transform:translateY(-50%);
-  background:rgba(0,0,0,0.7);
-  padding:10px;
-  border-radius:8px;
-  color:white;
-  z-index:20;
-  display:none;
-`;
+  position:fixed;right:10px;top:50%;transform:translateY(-50%);
+  background:rgba(0,0,0,0.7);padding:10px;border-radius:8px;color:white;z-index:20;display:none;`;
 document.body.appendChild(buildMenu);
 
 const craftMenu = document.createElement("div");
 craftMenu.style = `
-  position:fixed;
-  left:10px;
-  top:50%;
-  transform:translateY(-50%);
-  background:rgba(0,0,0,0.7);
-  padding:10px;
-  border-radius:8px;
-  color:white;
-  z-index:20;
-  display:none;
-`;
+  position:fixed;left:10px;top:50%;transform:translateY(-50%);
+  background:rgba(0,0,0,0.7);padding:10px;border-radius:8px;color:white;z-index:20;display:none;`;
 document.body.appendChild(craftMenu);
 
-/* ---------- BUTTONS ---------- */
 const buildToggle = document.createElement("button");
 buildToggle.textContent = "🏗️ BAU";
 buildToggle.style = "position:fixed;right:10px;bottom:200px;z-index:20;";
 document.body.appendChild(buildToggle);
+buildToggle.onclick = () => buildMenu.style.display = buildMenu.style.display === "none" ? "block" : "none";
 
 const craftToggle = document.createElement("button");
 craftToggle.textContent = "🛠️ CRAFT";
 craftToggle.style = "position:fixed;left:10px;bottom:200px;z-index:20;";
 document.body.appendChild(craftToggle);
+craftToggle.onclick = () => craftMenu.style.display = craftMenu.style.display === "none" ? "block" : "none";
 
-/* ---------- TOGGLE ---------- */
-buildToggle.onclick = () => {
-  buildMenu.style.display =
-    buildMenu.style.display === "none" ? "block" : "none";
-};
-
-craftToggle.onclick = () => {
-  craftMenu.style.display =
-    craftMenu.style.display === "none" ? "block" : "none";
-};
-
-/* ---------- BAU-MENÜ ---------- */
 function updateBuildMenu() {
   buildMenu.innerHTML = "<b>Bauen</b><br><br>";
   for (const k in inventory) {
@@ -361,57 +371,36 @@ function updateBuildMenu() {
       const btn = document.createElement("button");
       btn.textContent = `${k} (${inventory[k]})`;
       btn.style = "display:block;margin:4px 0;width:100%;";
-      btn.onclick = () => {
-        window.selectedBlockType = k;
-      };
+      btn.onclick = () => { selectedBlockType = k; };
       buildMenu.appendChild(btn);
     }
   }
 }
-window.selectedBlockType = "grass";
 
-/* ---------- BUILD ACTION ERWEITERN ---------- */
-const oldBuild = buildBtn.ontouchstart;
-buildBtn.ontouchstart = () => {
-  if (!inventory[selectedBlockType]) return;
-  const t = target(true);
-  if (!t) return;
-  addBlock(t.x | 0, t.y | 0, t.z | 0, selectedBlockType);
-  inventory[selectedBlockType]--;
-  updateBuildMenu();
-};
-
-/* ---------- CRAFTING ---------- */
 function updateCraftMenu() {
   craftMenu.innerHTML = "<b>Crafting</b><br><br>";
-
-  // Holz → Bretter
   const woodBtn = document.createElement("button");
   woodBtn.textContent = "🪵 1 Holz → 4 Bretter";
   woodBtn.onclick = () => {
     if (inventory.wood >= 1) {
       inventory.wood -= 1;
-      inventory.plank += 4;
-      updateCraftMenu();
-      updateBuildMenu();
+      inventory.plank = (inventory.plank || 0) + 4;
+      updateCraftMenu(); updateBuildMenu();
     }
   };
   craftMenu.appendChild(woodBtn);
 
-  // Bretter → Steinblock
   const plankBtn = document.createElement("button");
   plankBtn.textContent = "🧱 4 Bretter → 1 Stein";
   plankBtn.onclick = () => {
     if (inventory.plank >= 4) {
       inventory.plank -= 4;
       inventory.stone += 1;
-      updateCraftMenu();
-      updateBuildMenu();
+      updateCraftMenu(); updateBuildMenu();
     }
   };
   craftMenu.appendChild(plankBtn);
 
-  // Fleisch essen
   const meatBtn = document.createElement("button");
   meatBtn.textContent = "🍖 Fleisch essen (+20 Hunger)";
   meatBtn.onclick = () => {
@@ -424,124 +413,90 @@ function updateCraftMenu() {
   craftMenu.appendChild(meatBtn);
 }
 
-/* ---------- INIT ---------- */
 updateBuildMenu();
 updateCraftMenu();
-/* =====================================================
-   TEIL 4 – SAVEGAME (NUR EINFÜGEN)
-   ===================================================== */
 
+/* ---------- SAVEGAME ---------- */
 const SAVE_KEY = "mini_mc_save";
 
-/* ---------- SPEICHERN ---------- */
 function saveGame() {
   const data = {
-    player: {
-      x: player.pos.x,
-      y: player.pos.y,
-      z: player.pos.z,
-      hp: player.hp,
-      hunger: player.hunger
-    },
+    player: { x: player.pos.x, y: player.pos.y, z: player.pos.z, hp: player.hp, hunger: player.hunger },
     inventory: inventory,
     world: Object.keys(world)
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
 }
 
-/* ---------- LADEN ---------- */
 function loadGame() {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) return;
-
   try {
     const data = JSON.parse(raw);
-
-    // Spieler
-    player.pos.set(
-      data.player.x,
-      Math.max(5, data.player.y),
-      data.player.z
-    );
+    player.pos.set(data.player.x, Math.max(5, data.player.y), data.player.z);
     player.hp = data.player.hp;
     player.hunger = data.player.hunger;
-
-    // Inventar
     inventory = data.inventory || inventory;
 
-    // Welt neu bauen
     blocks.forEach(b => scene.remove(b.mesh));
     blocks.length = 0;
     for (const k in world) delete world[k];
-
     data.world.forEach(key => {
       const [x, y, z] = key.split(",").map(Number);
       addBlock(x, y, z, "stone");
     });
-
     updateBuildMenu();
     updateCraftMenu();
-  } catch (e) {
-    console.warn("Savegame defekt", e);
-  }
+  } catch(e){ console.warn("Savegame defekt", e); }
 }
 
-/* ---------- AUTO SAVE ---------- */
 setInterval(saveGame, 5000);
-
-/* ---------- LOAD BEIM START ---------- */
 setTimeout(loadGame, 500);
-/* =====================================================
-   TEIL 5 – MULTIPLAYER (LOKAL / MULTI-TAB)
-   ===================================================== */
 
-/* ---------- MULTI-TAB CHANNEL ---------- */
+/* ---------- MULTIPLAYER (BROADCASTCHANNEL) ---------- */
 const channel = new BroadcastChannel("mini_mc_multiplayer");
-const otherPlayers = {}; // id -> {mesh, pos}
+const otherPlayers = {};
+const playerId = Math.random().toString(36).substring(2,10);
 
-/* Spieler ID */
-const playerId = Math.random().toString(36).substring(2, 10);
-
-/* SEND PLAYER POSITION ALLE 50ms */
 setInterval(() => {
-  channel.postMessage({
-    id: playerId,
-    pos: { x: player.pos.x, y: player.pos.y, z: player.pos.z },
-    yaw: player.yaw,
-    pitch: player.pitch,
-    hp: player.hp
-  });
+  channel.postMessage({ id: playerId, pos: player.pos, yaw: player.yaw, pitch: player.pitch, hp: player.hp });
 }, 50);
 
-/* EMPFANG ANDERER SPIELER */
 channel.onmessage = e => {
   const data = e.data;
-  if (data.id === playerId) return; // Ignorieren eigener Player
-
+  if (data.id === playerId) return;
   if (!otherPlayers[data.id]) {
-    // Mesh erstellen
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 1.8, 0.6),
-      new THREE.MeshLambertMaterial({ color: Math.random() * 0xffffff })
-    );
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.6,1.8,0.6), new THREE.MeshLambertMaterial({color: Math.random()*0xffffff}));
     scene.add(m);
     otherPlayers[data.id] = { mesh: m };
   }
-
   const p = otherPlayers[data.id];
   p.mesh.position.set(data.pos.x, data.pos.y + 0.9, data.pos.z);
 };
 
-/* ANDERE SPIELER ENTFERNEN BEI SCHLUSS (TAB CLOSED) */
 window.addEventListener("beforeunload", () => {
   channel.postMessage({ id: playerId, disconnect: true });
 });
 
-/* DISCONNECT HANDLING */
 channel.onmessage = e => {
   const data = e.data;
   if (data.disconnect && otherPlayers[data.id]) {
     scene.remove(otherPlayers[data.id].mesh);
     delete otherPlayers[data.id];
   }
-};
+});
+
+/* ---------- IN ANIMATE LOOP INTEGRIEREN ----------
+   füge in deiner animate()-Funktion vor renderer.render(...) folgendes ein:
+
+updateAnimals(dt);
+updateBullets(dt);
+__hungerTimer += dt;
+if(__hungerTimer > 3){
+  __hungerTimer = 0;
+  player.hunger--;
+  if(player.hunger<0){ player.hunger=0; player.hp-=2; }
+}
+if(player.hp <=0){ alert("Du bist gestorben!"); location.reload(); }
+*/
+
