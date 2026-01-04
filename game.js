@@ -144,7 +144,7 @@ function collide(pos){
 
 /* ===== INVENTORY ===== */
 let inventory={grass:5,dirt:5,stone:5,sand:5,wood:5};
-let selected="grass"; let food=0; let weapons={"knife":true}; let currentWeapon="knife";
+let selected="grass"; let food=0;
 function updateHotbarUI(){
     hotbar.innerHTML="";
     Object.keys(inventory).forEach(k=>{
@@ -194,14 +194,13 @@ window.addEventListener("touchend",()=>look=false);
 /* ===== RAYCASTING FÜR BAUEN/GRABEN ===== */
 const raycaster = new THREE.Raycaster();
 function getTargetBlock(){
-    raycaster.setFromCamera(new THREE.Vector2(0,0),camera); // Fadenkreuz-Mitte
+    raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
     const intersects = raycaster.intersectObjects(blocks.map(b=>b.mesh));
     if(intersects.length>0){
-        const face = intersects[0].face;
         const point = intersects[0].point;
-        const normal = face.normal;
-        const pos = intersects[0].object.position.clone();
-        return {pos,normal};
+        const normal = intersects[0].face.normal;
+        const blockPos = intersects[0].object.position.clone().subScalar(0.5);
+        return {blockPos, normal};
     }
     return null;
 }
@@ -211,16 +210,19 @@ jumpBtn.addEventListener("touchstart",()=>{if(player.onGround){player.vel.y=6;pl
 mineBtn.addEventListener("touchstart",()=>{
     const target=getTargetBlock();
     if(target){
-        removeBlock(Math.floor(target.pos.x),Math.floor(target.pos.y),Math.floor(target.pos.z));
+        const b=target.blockPos;
+        removeBlock(Math.floor(b.x),Math.floor(b.y),Math.floor(b.z));
     }
 },{passive:false});
 buildBtn.addEventListener("touchstart",()=>{
     if(inventory[selected]<=0) return;
     const target=getTargetBlock();
     if(target){
-        const px=Math.floor(target.pos.x + target.normal.x);
-        const py=Math.floor(target.pos.y + target.normal.y);
-        const pz=Math.floor(target.pos.z + target.normal.z);
+        const b = target.blockPos;
+        const n = target.normal;
+        const px=Math.floor(b.x+n.x);
+        const py=Math.floor(b.y+n.y);
+        const pz=Math.floor(b.z+n.z);
         if(!collide(new THREE.Vector3(px+0.5,py+0.5,pz+0.5))){
             addBlock(px,py,pz,selected);
             inventory[selected]--;
@@ -231,6 +233,15 @@ buildBtn.addEventListener("touchstart",()=>{
 
 /* ===== ANIMATE LOOP ===== */
 const clock=new THREE.Clock();
+
+// **Chunks laden und Spieler-Startposition setzen**
+loadChunks();
+let maxY = 0;
+for(const b of blocks){
+    if(b.x===0 && b.z===0 && b.y>maxY) maxY=b.y;
+}
+player.pos.set(0.5,maxY+1.6,0.5);
+
 function animate(){
     requestAnimationFrame(animate);
     const dt=clock.getDelta();
