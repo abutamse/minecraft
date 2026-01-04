@@ -12,12 +12,14 @@ const hotbar=$("hotbar");
 /* ===== LOGIN ===== */
 const login=$("login"),startBtn=$("startBtn"),nameInput=$("nameInput");
 let playerName=null;
-startBtn.onclick=()=>{
-    if(!nameInput.value.trim()) return alert("Name eingeben");
-    playerName=nameInput.value.trim();
+
+startBtn.addEventListener("click",()=>{
+    const name=nameInput.value.trim();
+    if(!name) return alert("Bitte Name eingeben!");
+    playerName=name;
     login.style.display="none";
     init();
-};
+});
 const key=k=>`${playerName}_${k}`;
 
 /* ================= GAME ================= */
@@ -26,6 +28,7 @@ function init(){
 /* ===== SCENE & CAMERA ===== */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
+
 const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,.1,1000);
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth,window.innerHeight);
@@ -181,7 +184,7 @@ function updateHotbarUI(){
     hotbar.appendChild(f);
 }
 
-/* ===== CONTROLS ===== */
+/* ===== CONTROLS KEYBOARD ===== */
 window.addEventListener("keydown",e=>{
     if(e.key==="w") player.move.forward=true;
     if(e.key==="s") player.move.back=true;
@@ -197,14 +200,31 @@ window.addEventListener("keyup",e=>{
     if(e.key===" ") player.move.jump=false;
 });
 
-/* ===== JOYSTICK & TOUCH LOOK ===== */
-let joy={x:0,y:0},active=false;
-joystick.ontouchstart=()=>active=true;
-joystick.ontouchend=()=>{active=false;joy={x:0,y:0};stick.style.left="40px";stick.style.top="40px";};
-joystick.ontouchmove=e=>{
+/* ===== TOUCH: JOYSTICK + LOOK SIMULTAN ===== */
+let look=false,last={x:0,y:0};
+let active=false,joy={x:0,y:0};
+
+function getTouch(e,touchType){
+    const touches=e.touches;
+    for(let i=0;i<touches.length;i++){
+        if(touches[i].clientX<window.innerWidth/2 && touchType==="joystick") return touches[i];
+        if(touches[i].clientX>window.innerWidth/2 && touchType==="look") return touches[i];
+    }
+    return null;
+}
+
+joystick.addEventListener("touchstart",()=>active=true);
+joystick.addEventListener("touchend",()=>{
+    active=false;
+    joy={x:0,y:0};
+    stick.style.left="40px";
+    stick.style.top="40px";
+});
+joystick.addEventListener("touchmove",e=>{
     if(!active)return;
+    const t=getTouch(e,"joystick");
+    if(!t) return;
     const r=joystick.getBoundingClientRect();
-    const t=e.touches[0];
     let x=t.clientX-r.left-60;
     let y=t.clientY-r.top-60;
     const d=Math.min(40,Math.hypot(x,y));
@@ -213,22 +233,24 @@ joystick.ontouchmove=e=>{
     joy.y=Math.sin(a)*d/40;
     stick.style.left=40+joy.x*40+"px";
     stick.style.top=40+joy.y*40+"px";
-};
-
-let look=false,last={x:0,y:0};
-addEventListener("touchstart",e=>{for(const t of e.touches) if(t.clientX>window.innerWidth/2){look=true;last={x:t.clientX,y:t.clientY};}});
-addEventListener("touchmove",e=>{
-    if(!look)return;
-    for(const t of e.touches)
-        if(t.clientX>window.innerWidth/2){
-            player.yaw-=(t.clientX-last.x)*0.004;
-            player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch-(t.clientY-last.y)*0.004));
-            last={x:t.clientX,y:t.clientY};
-        }
 });
-addEventListener("touchend",()=>look=false);
 
-/* ===== ACTIONS ===== */
+window.addEventListener("touchstart",e=>{
+    const t=getTouch(e,"look");
+    if(t){look=true;last={x:t.clientX,y:t.clientY};}
+});
+window.addEventListener("touchmove",e=>{
+    const t=getTouch(e,"look");
+    if(!t) return;
+    if(look){
+        player.yaw-=(t.clientX-last.x)*0.004;
+        player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch-(t.clientY-last.y)*0.004));
+        last={x:t.clientX,y:t.clientY};
+    }
+});
+window.addEventListener("touchend",()=>look=false);
+
+/* ===== ACTIONS BUTTONS ===== */
 jumpBtn.onclick=()=>{if(player.onGround){player.vel.y=6;player.onGround=false;}};
 mineBtn.onclick=()=>{
     const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
@@ -275,15 +297,17 @@ function animate(){
 
     loadChunks();
 
-    // Bewegung + Laufen+Springen gleichzeitig
+    // Bewegung
     const dir=new THREE.Vector3();
-    if(player.move.forward) dir.add(new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw)));
-    if(player.move.back) dir.add(new THREE.Vector3(-Math.sin(player.yaw),0,Math.cos(player.yaw)));
-    if(player.move.left) dir.add(new THREE.Vector3(-Math.cos(player.yaw),0,-Math.sin(player.yaw)));
-    if(player.move.right) dir.add(new THREE.Vector3(Math.cos(player.yaw),0,Math.sin(player.yaw)));
+    dir.x=joy.x||0;
+    dir.z=-joy.y||0;
+    if(player.move.forward) dir.z-=1;
+    if(player.move.back) dir.z+=1;
+    if(player.move.left) dir.x-=1;
+    if(player.move.right) dir.x+=1;
     if(dir.length()>0) dir.normalize();
-    player.pos.x+=dir.x*player.speed*dt;
-    player.pos.z+=dir.z*player.speed*dt;
+    player.pos.x+=Math.sin(player.yaw)*dir.z*player.speed*dt+Math.cos(player.yaw)*dir.x*player.speed*dt;
+    player.pos.z+=-Math.cos(player.yaw)*dir.z*player.speed*dt+Math.sin(player.yaw)*dir.x*player.speed*dt;
 
     if(player.move.jump && player.onGround){player.vel.y=6;player.onGround=false;}
 
