@@ -66,7 +66,7 @@ const textures={
 
 /* ===== PLAYER ===== */
 const player={
-    pos:new THREE.Vector3(0,10,0),
+    pos:new THREE.Vector3(0,0,0),
     vel:new THREE.Vector3(),
     yaw:0,pitch:0,onGround:false,
     hp:100,hunger:100,coins:0,
