@@ -56,35 +56,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         /* ===== TEXTURES ===== */
         const loader = new THREE.TextureLoader();
-        const tex = n => {
-            const t = loader.load(n);
-            t.magFilter = t.minFilter = THREE.NearestFilter;
-            return t;
-        };
-        const textures = {
-            grass: tex("grass.png"),
-            dirt: tex("dirt.png"),
-            stone: tex("stone.png"),
-            wood: tex("wood.png"),
-            leaves: tex("leaves.png")
-        };
+        const tex = n => { const t = loader.load(n); t.magFilter=t.minFilter=THREE.NearestFilter; return t; };
+        const textures = { grass: tex("grass.png"), dirt: tex("dirt.png"), stone: tex("stone.png"), wood: tex("wood.png"), leaves: tex("leaves.png") };
 
         /* ===== PLAYER ===== */
-        const player = {
-            pos: new THREE.Vector3(0, 10, 0),
-            vel: new THREE.Vector3(),
-            yaw: 0,
-            pitch: 0,
-            width: 0.6,
-            height: 1.8,
-            onGround: false,
-            hp: 100,
-            hunger: 100,
-            coins: 0
-        };
+        const player = { pos:new THREE.Vector3(0,10,0), vel:new THREE.Vector3(), yaw:0, pitch:0, width:0.6, height:1.8, onGround:false, hp:100, hunger:100, coins:0 };
 
         /* ===== INPUT ===== */
-        const keys = { w:0,a:0,s:0,d:0,jump:0 };
+        const keys = { w:0, a:0, s:0, d:0, jump:0 };
         onkeydown = e=>{ if(e.key==="w") keys.w=1; if(e.key==="s") keys.s=1; if(e.key==="a") keys.a=1; if(e.key==="d") keys.d=1; if(e.key===" ") keys.jump=1; };
         onkeyup = e=>{ if(e.key==="w") keys.w=0; if(e.key==="s") keys.s=0; if(e.key==="a") keys.a=0; if(e.key==="d") keys.d=0; if(e.key===" ") keys.jump=0; };
 
@@ -122,14 +101,9 @@ document.addEventListener("DOMContentLoaded", () => {
         /* ===== COLLISION ===== */
         function collides(p){
             for(const b of blocks){
-                if(
-                    p.x+player.width/2 > b.x &&
-                    p.x-player.width/2 < b.x+1 &&
-                    p.z+player.width/2 > b.z &&
-                    p.z-player.width/2 < b.z+1 &&
-                    p.y < b.y+1 &&
-                    p.y+player.height > b.y
-                ) return true;
+                if(p.x+player.width/2>b.x && p.x-player.width/2<b.x+1 &&
+                   p.z+player.width/2>b.z && p.z-player.width/2<b.z+1 &&
+                   p.y< b.y+1 && p.y+player.height> b.y) return true;
             }
             return false;
         }
@@ -153,10 +127,10 @@ document.addEventListener("DOMContentLoaded", () => {
         function updateHotbarUI(){
             hotbar.innerHTML="";
             for(const k in inventory){
-                const d = document.createElement("div");
-                d.className = "slot"+(k===selectedBlockType?" active":"");
-                d.textContent = `${k}\n${inventory[k]}`;
-                d.onclick = ()=>{ selectedBlockType=k; updateHotbarUI(); };
+                const d=document.createElement("div");
+                d.className="slot"+(k===selectedBlockType?" active":"");
+                d.textContent=`${k}\n${inventory[k]}`;
+                d.onclick=()=>{ selectedBlockType=k; updateHotbarUI(); };
                 hotbar.appendChild(d);
             }
         }
@@ -201,7 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
             buildMenu.innerHTML="<b>Bauen</b><br><br>";
             for(const k in inventory){
                 if(inventory[k]>0){
-                    const btn = document.createElement("button");
+                    const btn=document.createElement("button");
                     btn.textContent=`${k} (${inventory[k]})`;
                     btn.style="display:block;margin:4px 0;width:100%;";
                     btn.onclick=()=>{ selectedBlockType=k; updateHotbarUI(); };
@@ -212,18 +186,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function updateCraftMenu(){
             craftMenu.innerHTML="<b>Crafting</b><br><br>";
-
-            const woodBtn = document.createElement("button");
+            const woodBtn=document.createElement("button");
             woodBtn.textContent="🪵 1 Holz → 4 Bretter";
             woodBtn.onclick=()=>{ if(inventory.wood>=1){ inventory.wood--; inventory.plank=(inventory.plank||0)+4; updateCraftMenu(); updateBuildMenu(); updateHotbarUI(); } };
             craftMenu.appendChild(woodBtn);
 
-            const plankBtn = document.createElement("button");
+            const plankBtn=document.createElement("button");
             plankBtn.textContent="🧱 4 Bretter → 1 Stein";
             plankBtn.onclick=()=>{ if(inventory.plank>=4){ inventory.plank-=4; inventory.stone+=1; updateCraftMenu(); updateBuildMenu(); updateHotbarUI(); } };
             craftMenu.appendChild(plankBtn);
 
-            const meatBtn = document.createElement("button");
+            const meatBtn=document.createElement("button");
             meatBtn.textContent="🍖 Fleisch essen (+20 Hunger)";
             meatBtn.onclick=()=>{ if(inventory.meat>=1){ inventory.meat--; player.hunger=Math.min(100,player.hunger+20); updateCraftMenu(); } };
             craftMenu.appendChild(meatBtn);
@@ -233,18 +206,17 @@ document.addEventListener("DOMContentLoaded", () => {
         /* ===== SAVEGAME ===== */
         const SAVE_KEY="mini_mc_save";
         function saveGame(){
-            const data = {player:{x:player.pos.x,y:player.pos.y,z:player.pos.z,hp:player.hp,hunger:player.hunger}, inventory, world:Object.keys(world)};
+            const data={player:{x:player.pos.x,y:player.pos.y,z:player.pos.z,hp:player.hp,hunger:player.hunger},inventory,world:Object.keys(world)};
             localStorage.setItem(SAVE_KEY,JSON.stringify(data));
         }
         function loadGame(){
-            const raw = localStorage.getItem(SAVE_KEY);
+            const raw=localStorage.getItem(SAVE_KEY);
             if(!raw) return;
             try{
                 const data=JSON.parse(raw);
                 player.pos.set(data.player.x,Math.max(5,data.player.y),data.player.z);
                 player.hp=data.player.hp; player.hunger=data.player.hunger;
-                inventory = data.inventory||inventory;
-
+                inventory=data.inventory||inventory;
                 blocks.forEach(b=>scene.remove(b.mesh));
                 blocks.length=0;
                 for(const k in world) delete world[k];
@@ -252,7 +224,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     const [x,y,z]=key.split(",").map(Number);
                     addBlock(x,y,z,"stone");
                 });
-
                 updateBuildMenu(); updateCraftMenu(); updateHotbarUI();
             }catch(e){ console.warn("Savegame defekt",e); }
         }
@@ -260,7 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(loadGame,500);
 
         /* ===== MULTIPLAYER ===== */
-        const channel = new BroadcastChannel("mini_mc_multiplayer");
+        const channel=new BroadcastChannel("mini_mc_multiplayer");
         const otherPlayers={};
         const playerId=Math.random().toString(36).substring(2,10);
         setInterval(()=>{ channel.postMessage({id:playerId,pos:player.pos,yaw:player.yaw,pitch:player.pitch,hp:player.hp}); },50);
@@ -274,17 +245,14 @@ document.addEventListener("DOMContentLoaded", () => {
         window.addEventListener("beforeunload",()=>{ channel.postMessage({id:playerId,disconnect:true}); });
 
         /* ===== ANIMALS ===== */
-        const animals=[]; 
-        const animalGeometry = new THREE.BoxGeometry(0.9,0.9,1.2);
-        const animalMaterial = new THREE.MeshLambertMaterial({color:0xffffff});
+        const animals=[];
+        const animalGeometry=new THREE.BoxGeometry(0.9,0.9,1.2);
+        const animalMaterial=new THREE.MeshLambertMaterial({color:0xffffff});
         function findGroundY(x,z){ let y=-1; for(const b of blocks){ if(b.x===Math.floor(x)&&b.z===Math.floor(z)) if(b.y>y) y=b.y; } return y>=0?y+0.45:null; }
         function spawnAnimalSafe(x,z){ const y=findGroundY(x,z); if(y===null) return; const m=new THREE.Mesh(animalGeometry,animalMaterial.clone()); m.position.set(x+0.5,y,z+0.5); scene.add(m); animals.push({mesh:m,hp:10,dir:new THREE.Vector3(Math.random()-0.5,0,Math.random()-0.5).normalize(),time:2+Math.random()*3}); }
         for(let i=0;i<6;i++) spawnAnimalSafe(Math.random()*20-10,Math.random()*20-10);
 
-        /* ===== HUNGER ===== */
         let __hungerTimer=0;
-
-        /* ===== UPDATE FUNCTIONS ===== */
         function updateAnimals(dt){ for(const a of animals){ a.time-=dt; if(a.time<=0){ a.dir.set(Math.random()-0.5,0,Math.random()-0.5).normalize(); a.time=2+Math.random()*3; } const next=a.mesh.position.clone().add(a.dir.clone().multiplyScalar(1.2*dt)); const ground=findGroundY(next.x,next.z); if(ground!==null) next.y=ground; a.mesh.position.copy(next); } }
         function updateBullets(dt){ for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.position.add(b.dir.clone().multiplyScalar(20*dt)); for(let j=animals.length-1;j>=0;j--){ const a=animals[j]; if(b.position.distanceTo(a.mesh.position)<0.6){ a.hp-=5; scene.remove(b); bullets.splice(i,1); if(a.hp<=0){ scene.remove(a.mesh); animals.splice(j,1); inventory.meat=(inventory.meat||0)+1; player.coins+=2; updateBuildMenu(); updateCraftMenu(); updateHotbarUI(); } break; } } } }
 
@@ -294,40 +262,28 @@ document.addEventListener("DOMContentLoaded", () => {
             requestAnimationFrame(animate);
             const dt=clock.getDelta();
 
-            // Bewegung
             let mx=keys.d-keys.a;
             let mz=keys.s-keys.w;
             const l=Math.hypot(mx,mz);
             if(l){ mx/=l; mz/=l; }
-
             const dx=Math.cos(player.yaw)*mx+Math.sin(player.yaw)*mz;
             const dz=-Math.sin(player.yaw)*mx+Math.cos(player.yaw)*mz;
+            player.pos.x+=dx*6*dt; if(collides(player.pos)) player.pos.x-=dx*6*dt;
+            player.pos.z+=dz*6*dt; if(collides(player.pos)) player.pos.z-=dz*6*dt;
 
-            player.pos.x+=dx*6*dt;
-            if(collides(player.pos)) player.pos.x-=dx*6*dt;
-            player.pos.z+=dz*6*dt;
-            if(collides(player.pos)) player.pos.z-=dz*6*dt;
+            player.vel.y-=9.8*dt; player.pos.y+=player.vel.y*dt;
+            if(collides(player.pos)){ player.vel.y=0; player.onGround=true; player.pos.y=Math.ceil(player.pos.y); } else player.onGround=false;
 
-            // Fall / Jump
-            player.vel.y-=9.8*dt;
-            player.pos.y+=player.vel.y*dt;
-            if(collides(player.pos)){ player.vel.y=0; player.onGround=true; player.pos.y=Math.ceil(player.pos.y); }
-            else player.onGround=false;
-
-            // Kamera
             camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
             camera.lookAt(camera.position.clone().add(new THREE.Vector3(Math.sin(player.yaw),Math.sin(player.pitch),-Math.cos(player.yaw))));
 
-            // UI
             healthUI.textContent="❤️ "+(player.hp|0);
             hungerUI.textContent="🍖 "+(player.hunger|0)+"%";
             coinsUI.textContent="🪙 "+player.coins;
 
-            // Tiere & Bullets
             updateAnimals(dt);
             updateBullets(dt);
 
-            // Hunger
             __hungerTimer+=dt;
             if(__hungerTimer>3){ __hungerTimer=0; player.hunger--; if(player.hunger<0){ player.hunger=0; player.hp-=2; } }
             if(player.hp<=0){ alert("Du bist gestorben!"); location.reload(); }
@@ -354,7 +310,6 @@ document.addEventListener("DOMContentLoaded", () => {
             stick.style.left=(40+x)+"px";
             stick.style.top=(40+y)+"px";
             joy.x=x/50; joy.y=y/50;
-
             keys.w=joy.y<-0.3?1:0;
             keys.s=joy.y>0.3?1:0;
             keys.a=joy.x<-0.3?1:0;
