@@ -20,6 +20,7 @@ startBtn.addEventListener("click",()=>{
     login.style.display="none";
     init();
 });
+
 const key=k=>`${playerName}_${k}`;
 
 /* ================= GAME ================= */
@@ -200,7 +201,7 @@ window.addEventListener("keyup",e=>{
     if(e.key===" ") player.move.jump=false;
 });
 
-/* ===== TOUCH: JOYSTICK + LOOK SIMULTAN ===== */
+/* ===== TOUCH: JOYSTICK + LOOK EXTREM FLÜSSIG ===== */
 let look=false,last={x:0,y:0};
 let active=false,joy={x:0,y:0};
 
@@ -250,7 +251,12 @@ window.addEventListener("touchmove",e=>{
 });
 window.addEventListener("touchend",()=>look=false);
 
-/* ===== ACTIONS BUTTONS ===== */
+/* ===== ACTIONS BUTTONS (Schnell reagieren) ===== */
+[jumpBtn,mineBtn,buildBtn,shootBtn].forEach(btn=>{
+    btn.addEventListener("touchstart",e=>{e.preventDefault();btn.click();},{passive:false});
+});
+
+/* ===== PLAYER ACTIONS ===== */
 jumpBtn.onclick=()=>{if(player.onGround){player.vel.y=6;player.onGround=false;}};
 mineBtn.onclick=()=>{
     const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
