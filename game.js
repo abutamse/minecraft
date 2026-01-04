@@ -23,26 +23,32 @@ const key=k=>`${playerName}_${k}`;
 /* ================= GAME ================= */
 function init(){
 
-/* ===== SCENE ===== */
+/* ===== SCENE & CAMERA ===== */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
-
-const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000);
-const renderer=new THREE.WebGLRenderer({antialias:false});
-renderer.setSize(innerWidth,innerHeight);
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,.1,1000);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 window.addEventListener("resize",()=>{
-    camera.aspect=innerWidth/innerHeight;
+    camera.aspect=window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);
+    renderer.setSize(window.innerWidth,window.innerHeight);
 });
 
-/* ===== FADENKREUZ ===== */
+/* ===== FADENKREUZ & TARGET BLOCK ===== */
 const cross=document.createElement("div");
 cross.style="position:fixed;top:50%;left:50%;width:6px;height:6px;background:yellow;transform:translate(-50%,-50%);z-index:20";
 document.body.appendChild(cross);
+
+const targetBox=new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.01,1.01,1.01)),
+    new THREE.LineBasicMaterial({color:0xffff00})
+);
+scene.add(targetBox);
+targetBox.visible=false;
 
 /* ===== LIGHT ===== */
 scene.add(new THREE.AmbientLight(0xffffff,.7));
@@ -73,7 +79,8 @@ const player={
     vel:new THREE.Vector3(),
     yaw:0,pitch:0,onGround:false,
     hp:100,hunger:100,coins:0,
-    speed:6
+    speed:6,
+    move:{forward:false,back:false,left:false,right:false,jump:false}
 };
 
 /* ===== WORLD ===== */
@@ -105,18 +112,17 @@ function removeBlock(x,y,z){
     }
 }
 
-/* ===== TERRAIN + CHUNKS ===== */
+/* ===== TERRAIN & CHUNKS ===== */
 function genChunk(cx,cz){
     for(let x=cx;x<cx+16;x++)
     for(let z=cz;z<cz+16;z++){
-        let height=Math.floor(Math.sin(x*.1)*5+Math.cos(z*.1)*5+Math.random()*2)+5; // Berge
+        let height=Math.floor(Math.sin(x*.1)*5+Math.cos(z*.1)*5+Math.random()*2)+5;
         for(let y=0;y<=height;y++){
             let type="stone";
             if(y>height-3) type="dirt";
             if(y===height) type=Math.random()<.2?"sand":"grass";
             addBlock(x,y,z,type);
         }
-        // Bäume
         if(Math.random()<.08){
             const h=3+Math.floor(Math.random()*2);
             for(let i=1;i<=h;i++) addBlock(x,height+i,z,"wood");
@@ -124,7 +130,6 @@ function genChunk(cx,cz){
             for(let dz=-1;dz<=1;dz++)
                 addBlock(x+dx,height+h,z+dz,"leaves");
         }
-        // Wasser
         if(height<4){
             for(let y=height+1;y<=3;y++) addBlock(x,y,z,"water");
         }
@@ -170,20 +175,32 @@ function updateHotbarUI(){
         d.onclick=()=>{selected=k;updateHotbarUI();}
         hotbar.appendChild(d);
     });
-    // Food
     const f=document.createElement("div");
     f.className="slot";
     f.textContent=`🍖 ${food}`;
     hotbar.appendChild(f);
 }
 
-/* ===== JOYSTICK ===== */
+/* ===== CONTROLS ===== */
+window.addEventListener("keydown",e=>{
+    if(e.key==="w") player.move.forward=true;
+    if(e.key==="s") player.move.back=true;
+    if(e.key==="a") player.move.left=true;
+    if(e.key==="d") player.move.right=true;
+    if(e.key===" ") player.move.jump=true;
+});
+window.addEventListener("keyup",e=>{
+    if(e.key==="w") player.move.forward=false;
+    if(e.key==="s") player.move.back=false;
+    if(e.key==="a") player.move.left=false;
+    if(e.key==="d") player.move.right=false;
+    if(e.key===" ") player.move.jump=false;
+});
+
+/* ===== JOYSTICK & TOUCH LOOK ===== */
 let joy={x:0,y:0},active=false;
 joystick.ontouchstart=()=>active=true;
-joystick.ontouchend=()=>{
-    active=false;joy={x:0,y:0};
-    stick.style.left="40px";stick.style.top="40px";
-};
+joystick.ontouchend=()=>{active=false;joy={x:0,y:0};stick.style.left="40px";stick.style.top="40px";};
 joystick.ontouchmove=e=>{
     if(!active)return;
     const r=joystick.getBoundingClientRect();
@@ -198,16 +215,12 @@ joystick.ontouchmove=e=>{
     stick.style.top=40+joy.y*40+"px";
 };
 
-/* ===== LOOK ===== */
 let look=false,last={x:0,y:0};
-addEventListener("touchstart",e=>{
-    for(const t of e.touches)
-        if(t.clientX>innerWidth/2){look=true;last={x:t.clientX,y:t.clientY};}
-});
+addEventListener("touchstart",e=>{for(const t of e.touches) if(t.clientX>window.innerWidth/2){look=true;last={x:t.clientX,y:t.clientY};}});
 addEventListener("touchmove",e=>{
     if(!look)return;
     for(const t of e.touches)
-        if(t.clientX>innerWidth/2){
+        if(t.clientX>window.innerWidth/2){
             player.yaw-=(t.clientX-last.x)*0.004;
             player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch-(t.clientY-last.y)*0.004));
             last={x:t.clientX,y:t.clientY};
@@ -223,7 +236,7 @@ mineBtn.onclick=()=>{
     removeBlock(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z));
 };
 buildBtn.onclick=()=>{
-    if(inventory[selected]<=0)return;
+    if(inventory[selected]<=0) return;
     const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
     const p=player.pos.clone().add(dir);
     addBlock(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z),selected);
@@ -233,22 +246,16 @@ buildBtn.onclick=()=>{
 /* ===== PROJECTILES ===== */
 const projectiles=[];
 shootBtn.onclick=()=>{
-    let dmg=5;
-    if(currentWeapon==="sword") dmg=15;
     const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
-    const m=new THREE.Mesh(new THREE.SphereGeometry(.1), new THREE.MeshBasicMaterial({color:0xffff00}));
+    const m=new THREE.Mesh(new THREE.SphereGeometry(.1),new THREE.MeshBasicMaterial({color:0xffff00}));
     m.position.copy(player.pos.clone().add(new THREE.Vector3(0,1.6,0)));
     scene.add(m);
-    projectiles.push({mesh:m,vel:dir.multiplyScalar(15),dmg});
+    projectiles.push({mesh:m,vel:dir.multiplyScalar(15),dmg:5});
 };
 
 /* ===== MOBS ===== */
 const mobs=[];
-const mobTypes={
-    cow:{hp:20,color:0xffffff,drop:1},
-    pig:{hp:15,color:0xff9999,drop:1},
-    zombie:{hp:30,color:0x00ff00,drop:2}
-};
+const mobTypes={cow:{hp:20,color:0xffffff,drop:1},pig:{hp:15,color:0xff9999,drop:1},zombie:{hp:30,color:0x00ff00,drop:2}};
 let mobTimer=0;
 function spawnMob(){
     const types=Object.keys(mobTypes);
@@ -257,7 +264,7 @@ function spawnMob(){
     const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:mobTypes[type].color}));
     m.position.set(player.pos.x+Math.random()*20-10,3,player.pos.z+Math.random()*20-10);
     scene.add(m);
-    mobs.push({mesh:m,type,hp:mobTypes[type].hp,dir:new THREE.Vector3(Math.random(),0,Math.random()).normalize()});
+    mobs.push({mesh:m,type,hp:mobTypes[type].hp});
 }
 
 /* ===== ANIMATE LOOP ===== */
@@ -268,21 +275,25 @@ function animate(){
 
     loadChunks();
 
-    // Bewegung
-    const f=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
-    const r=new THREE.Vector3(-f.z,0,f.x);
-    let nx=player.pos.x+(f.x*-joy.y+r.x*joy.x)*player.speed*dt;
-    let nz=player.pos.z+(f.z*-joy.y+r.z*joy.x)*player.speed*dt;
-    if(!collide(nx,player.pos.y,nz)){player.pos.x=nx;player.pos.z=nz;}
+    // Bewegung + Laufen+Springen gleichzeitig
+    const dir=new THREE.Vector3();
+    if(player.move.forward) dir.add(new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw)));
+    if(player.move.back) dir.add(new THREE.Vector3(-Math.sin(player.yaw),0,Math.cos(player.yaw)));
+    if(player.move.left) dir.add(new THREE.Vector3(-Math.cos(player.yaw),0,-Math.sin(player.yaw)));
+    if(player.move.right) dir.add(new THREE.Vector3(Math.cos(player.yaw),0,Math.sin(player.yaw)));
+    if(dir.length()>0) dir.normalize();
+    player.pos.x+=dir.x*player.speed*dt;
+    player.pos.z+=dir.z*player.speed*dt;
+
+    if(player.move.jump && player.onGround){player.vel.y=6;player.onGround=false;}
 
     // Gravitation
     player.vel.y-=9.8*dt;
-    let ny=player.pos.y+player.vel.y*dt;
-    if(ny<2){ny=2;player.vel.y=0;player.onGround=true;}else player.onGround=false;
-    player.pos.y=ny;
+    player.pos.y+=player.vel.y*dt;
+    if(player.pos.y<2){player.pos.y=2;player.vel.y=0;player.onGround=true;} else player.onGround=false;
 
     camera.position.copy(player.pos).add(new THREE.Vector3(0,1.6,0));
-    camera.lookAt(camera.position.clone().add(f));
+    camera.lookAt(camera.position.clone().add(new THREE.Vector3(Math.sin(player.yaw)*10,Math.sin(player.pitch)*10,-Math.cos(player.yaw)*10)));
 
     // Projektile
     for(let i=projectiles.length-1;i>=0;i--){
@@ -310,6 +321,14 @@ function animate(){
             m.mesh.position.addScaledVector(d,dt*2);
         }
     }
+
+    // Blockhighlight
+    const raycaster=new THREE.Raycaster(camera.position,new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw)));
+    const intersects=raycaster.intersectObjects(blocks.map(b=>b.mesh));
+    if(intersects.length>0){
+        targetBox.visible=true;
+        targetBox.position.copy(intersects[0].object.position);
+    } else targetBox.visible=false;
 
     updateHotbarUI();
 
