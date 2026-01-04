@@ -58,7 +58,8 @@ const textures={
     sand:tex("sand.png"),
     wood:tex("wood.png"),
     leaves:tex("leaves.png"),
-    water:tex("water.png")
+    water:tex("water.png"),
+    cow:tex("cow.png") // einfache Tiertextur
 };
 
 /* ===== PLAYER ===== */
@@ -66,9 +67,8 @@ const player={
     pos:new THREE.Vector3(0,0,0),
     vel:new THREE.Vector3(),
     yaw:0,pitch:0,onGround:false,
-    speed:6,
-    width:0.6,
-    height:1.8,
+    speed:6,width:0.6,height:1.8,
+    hp:100,hunger:100,coins:0,
     move:{forward:false,back:false,left:false,right:false,jump:false}
 };
 
@@ -95,7 +95,7 @@ function removeBlock(x,y,z){
         scene.remove(blocks[i].mesh);
         blocks.splice(i,1);
         delete world[k];
-        inventory[blocks[i].type] = (inventory[blocks[i].type]||0)+1;
+        inventory[blocks[i].type]=(inventory[blocks[i].type]||0)+1;
         updateHotbarUI();
     }
 }
@@ -211,6 +211,29 @@ function getTargetBlock(){
     return null;
 }
 
+/* ===== PROJECTILES ===== */
+const projectiles=[];
+function shoot(){
+    const geometry=new THREE.SphereGeometry(0.1,8,8);
+    const material=new THREE.MeshBasicMaterial({color:0xff0000});
+    const mesh=new THREE.Mesh(geometry,material);
+    mesh.position.copy(camera.position);
+    const dir=new THREE.Vector3(Math.sin(player.yaw),Math.sin(player.pitch),-Math.cos(player.yaw)).normalize();
+    projectiles.push({mesh,dir,speed:20});
+    scene.add(mesh);
+}
+
+/* ===== ANIMAL SYSTEM ===== */
+const animals=[];
+function spawnAnimal(x,y,z){
+    const geo=new THREE.BoxGeometry(0.8,0.8,0.8);
+    const mat=new THREE.MeshLambertMaterial({map:textures.cow});
+    const mesh=new THREE.Mesh(geo,mat);
+    mesh.position.set(x+0.5,y+0.4,z+0.5);
+    scene.add(mesh);
+    animals.push({mesh,vel:new THREE.Vector3(),hp:10});
+}
+
 /* ===== ACTION BUTTONS ===== */
 jumpBtn.addEventListener("touchstart",()=>{if(player.onGround) {player.vel.y=6;player.onGround=false;}},{passive:false});
 mineBtn.addEventListener("touchstart",()=>{
@@ -236,15 +259,21 @@ buildBtn.addEventListener("touchstart",()=>{
         }
     }
 },{passive:false});
+shootBtn.addEventListener("touchstart",shoot);
 
 /* ===== ANIMATE LOOP ===== */
 const clock=new THREE.Clock();
-
-// **Chunks laden und Spieler setzen**
 loadChunks();
+
+// Set player above Boden
 let maxY=0;
 for(const b of blocks){ if(b.x===0 && b.z===0 && b.y>maxY) maxY=b.y; }
 player.pos.set(0.5,maxY+player.height,0.5);
+
+// Spawn ein paar Tiere
+for(let i=0;i<5;i++){
+    spawnAnimal(Math.floor(Math.random()*20-10),0,Math.floor(Math.random()*20-10));
+}
 
 function animate(){
     requestAnimationFrame(animate);
@@ -269,8 +298,6 @@ function animate(){
     if(player.move.jump && player.onGround){player.vel.y=6;player.onGround=false;}
     player.vel.y-=9.8*dt;
     newPos.y=player.pos.y+player.vel.y*dt;
-
-    // Kollision auf Y-Achse
     let feet=new THREE.Vector3(player.pos.x,newPos.y,player.pos.z);
     if(collide(feet) || newPos.y<0){
         player.vel.y=0;
@@ -280,10 +307,39 @@ function animate(){
         player.onGround=false;
     }
 
+    // Kamera
     camera.position.copy(player.pos).add(new THREE.Vector3(0,player.height,0));
     camera.lookAt(camera.position.clone().add(new THREE.Vector3(Math.sin(player.yaw)*10,Math.sin(player.pitch)*10,-Math.cos(player.yaw)*10)));
 
+    // Tiere bewegen
+    for(const a of animals){
+        const moveDir=new THREE.Vector3(Math.random()-0.5,0,Math.random()-0.5);
+        moveDir.normalize().multiplyScalar(1*dt);
+        a.mesh.position.add(moveDir);
+    }
+
+    // Projectiles bewegen & check collision
+    for(let i=projectiles.length-1;i>=0;i--){
+        const p=projectiles[i];
+        p.mesh.position.add(p.dir.clone().multiplyScalar(p.speed*dt));
+
+        // Prüfen Tiere
+        for(const a of animals){
+            if(p.mesh.position.distanceTo(a.mesh.position)<0.5){
+                a.hp-=5;
+                scene.remove(p.mesh);
+                projectiles.splice(i,1);
+                if(a.hp<=0){scene.remove(a.mesh);animals.splice(animals.indexOf(a),1);}
+                break;
+            }
+        }
+    }
+
     updateHotbarUI();
+    healthUI.textContent=`❤️ ${player.hp|0}`;
+    hungerUI.textContent=`🍖 ${player.hunger|0}%`;
+    coinsUI.textContent=`🪙 ${player.coins}`;
+
     renderer.render(scene,camera);
 }
 
