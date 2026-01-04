@@ -32,8 +32,7 @@ const renderer=new THREE.WebGLRenderer({antialias:false});
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
-
-addEventListener("resize",()=>{
+window.addEventListener("resize",()=>{
     camera.aspect=innerWidth/innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth,innerHeight);
@@ -91,10 +90,11 @@ function removeBlock(x,y,z){
     const k=`${x},${y},${z}`;
     const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);
     if(i>-1){
+        const type=blocks[i].type;
         scene.remove(blocks[i].mesh);
         blocks.splice(i,1);
         delete world[k];
-        inventory[world[k]]=(inventory[world[k]]||0)+1;
+        inventory[type]=(inventory[type]||0)+1;
         updateHotbar();
     }
 }
@@ -147,10 +147,9 @@ function collide(x,y,z){
     return false;
 }
 
-/* ===== INVENTORY ===== */
-let inventory={grass:0,dirt:0,stone:0,sand:0,wood:0};
+/* ===== INVENTORY & HOTBAR ===== */
+let inventory={grass:5,dirt:5,stone:5,sand:5,wood:5};
 let selected="grass";
-
 function updateHotbar(){
     hotbar.innerHTML="";
     Object.keys(inventory).forEach(k=>{
@@ -202,59 +201,110 @@ addEventListener("touchmove",e=>{
 addEventListener("touchend",()=>look=false);
 
 /* ===== ACTIONS ===== */
+jumpBtn.onclick=()=>{if(player.onGround){player.vel.y=6;player.onGround=false;}};
 mineBtn.onclick=()=>{
     const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
     const p=player.pos.clone().add(dir);
     removeBlock(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z));
 };
-
 buildBtn.onclick=()=>{
     if(inventory[selected]<=0)return;
     const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
     const p=player.pos.clone().add(dir);
     addBlock(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z),selected);
-    inventory[selected]--;
-    updateHotbar();
+    inventory[selected]--;updateHotbar();
 };
 
-jumpBtn.onclick=()=>{
-    if(player.onGround){player.vel.y=6;player.onGround=false;}
+/* ===== PROJECTILES ===== */
+const projectiles=[];
+shootBtn.onclick=()=>{
+    const dmg=5;
+    const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
+    const m=new THREE.Mesh(new THREE.SphereGeometry(.1),new THREE.MeshBasicMaterial({color:0xff0}));
+    m.position.copy(player.pos.clone().add(new THREE.Vector3(0,1.6,0)));
+    scene.add(m);
+    projectiles.push({mesh:m,vel:dir.multiplyScalar(15),dmg});
 };
+
+/* ===== MOBS ===== */
+const mobs=[];
+const mobTypes={
+    cow:{hp:20,color:0xffffff,drop:1},
+    pig:{hp:15,color:0xff9999,drop:1},
+    zombie:{hp:30,color:0x00ff00,drop:2}
+};
+function spawnMob(){
+    const types=Object.keys(mobTypes);
+    const type=types[Math.floor(Math.random()*types.length)];
+    const g=new THREE.BoxGeometry(.8,.8,.8);
+    const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:mobTypes[type].color}));
+    m.position.set(player.pos.x+Math.random()*20-10,3,player.pos.z+Math.random()*20-10);
+    scene.add(m);
+    mobs.push({mesh:m,type,hp:mobTypes[type].hp,state:"idle",dir:new THREE.Vector3(Math.random(),0,Math.random()).normalize()});
+}
 
 /* ===== LOOP ===== */
 const clock=new THREE.Clock();
+let mobTimer=0;
+
 function animate(){
     requestAnimationFrame(animate);
     const dt=clock.getDelta();
 
+    // Load Chunks
     loadChunks();
 
+    // Bewegung
     const f=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
     const r=new THREE.Vector3(-f.z,0,f.x);
-
     let nx=player.pos.x+(f.x*-joy.y+r.x*joy.x)*player.speed*dt;
     let nz=player.pos.z+(f.z*-joy.y+r.z*joy.x)*player.speed*dt;
-    if(!collide(nx,player.pos.y,nz)){
-        player.pos.x=nx;player.pos.z=nz;
-    }
+    if(!collide(nx,player.pos.y,nz)){player.pos.x=nx;player.pos.z=nz;}
 
+    // Gravitation / Jump
     player.vel.y-=9.8*dt;
     let ny=player.pos.y+player.vel.y*dt;
-    if(ny<2){ny=2;player.vel.y=0;player.onGround=true;}
+    if(ny<2){ny=2;player.vel.y=0;player.onGround=true;}else player.onGround=false;
     player.pos.y=ny;
 
     camera.position.copy(player.pos).add(new THREE.Vector3(0,1.6,0));
     camera.lookAt(camera.position.clone().add(f));
 
+    // Hunger & HP
     player.hunger-=dt*(100/300);
     if(player.hunger<=0){player.hunger=0;player.hp-=dt*2;}
 
+    // Projektile Update
+    for(let i=projectiles.length-1;i>=0;i--){
+        const p=projectiles[i];
+        p.mesh.position.addScaledVector(p.vel,dt);
+        if(p.mesh.position.distanceTo(player.pos)>50){scene.remove(p.mesh);projectiles.splice(i,1);}
+        for(const m of mobs){
+            if(p.mesh.position.distanceTo(m.mesh.position)<.5){
+                m.hp-=p.dmg;
+                scene.remove(p.mesh);projectiles.splice(i,1);break;
+            }
+        }
+    }
+
+    // Mob Spawn & Bewegung
+    mobTimer+=dt;
+    if(mobTimer>5){spawnMob();mobTimer=0;}
+    for(const m of mobs){
+        if(m.mesh.position.distanceTo(player.pos)<6){
+            const d=player.pos.clone().sub(m.mesh.position).normalize();
+            m.mesh.position.addScaledVector(d,dt*2);
+        }
+    }
+
+    // UI
     healthUI.textContent=`❤️ ${player.hp|0}`;
     hungerUI.textContent=`🍖 ${player.hunger|0}%`;
     coinsUI.textContent=`🪙 ${player.coins}`;
 
     renderer.render(scene,camera);
 }
+
 animate();
 }
 });
