@@ -107,19 +107,26 @@ function removeBlock(x,y,z){
 function genChunk(cx,cz){
     for(let x=cx;x<cx+16;x++)
     for(let z=cz;z<cz+16;z++){
-        let height=Math.floor(Math.sin(x*0.1)*5+Math.cos(z*0.1)*5+Math.random()*2)+5;
+        // Flacher Boden + Berge
+        let baseHeight = 4;
+        let height = Math.floor(baseHeight + Math.sin(x*0.15)*3 + Math.cos(z*0.15)*3 + Math.random()*1);
+
         for(let y=0;y<=height;y++){
             let type="stone";
             if(y>height-3) type="dirt";
-            if(y===height) type=Math.random()<0.2?"sand":"grass";
+            if(y===height) type = Math.random()<0.2?"sand":"grass";
             addBlock(x,y,z,type);
         }
+
+        // Bäume
         if(Math.random()<0.08){
             const h=3+Math.floor(Math.random()*2);
             for(let i=1;i<=h;i++) addBlock(x,height+i,z,"wood");
             for(let dx=-1;dx<=1;dx++)
             for(let dz=-1;dz<=1;dz++) addBlock(x+dx,height+h,z+dz,"leaves");
         }
+
+        // Wasser
         if(height<4) for(let y=height+1;y<=3;y++) addBlock(x,y,z,"water");
     }
 }
@@ -197,10 +204,9 @@ function getTargetBlock(){
     raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
     const intersects = raycaster.intersectObjects(blocks.map(b=>b.mesh));
     if(intersects.length>0){
-        const point = intersects[0].point;
-        const normal = intersects[0].face.normal;
         const blockPos = intersects[0].object.position.clone().subScalar(0.5);
-        return {blockPos, normal};
+        const normal = intersects[0].face.normal;
+        return {blockPos,normal};
     }
     return null;
 }
@@ -218,8 +224,8 @@ buildBtn.addEventListener("touchstart",()=>{
     if(inventory[selected]<=0) return;
     const target=getTargetBlock();
     if(target){
-        const b = target.blockPos;
-        const n = target.normal;
+        const b=target.blockPos;
+        const n=target.normal;
         const px=Math.floor(b.x+n.x);
         const py=Math.floor(b.y+n.y);
         const pz=Math.floor(b.z+n.z);
