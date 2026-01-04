@@ -25,7 +25,7 @@ function initGame(){
 /* ===== SCENE & CAMERA ===== */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
-const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,.1,1000);
+const camera=new THREE.PerspectiveCamera(65,window.innerWidth/window.innerHeight,.1,1000); // engeres FOV für Übersicht
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth,window.innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
@@ -72,7 +72,7 @@ const player={
 };
 
 /* ===== WORLD ===== */
-const blockGeo=new THREE.BoxGeometry(1,1,1);
+const blockGeo=new THREE.BoxGeometry(0.98,0.98,0.98); // kleiner für lückenfrei
 const blocks=[];
 const world={};
 const chunks=new Set();
@@ -81,7 +81,7 @@ function addBlock(x,y,z,type){
     const k=`${x},${y},${z}`;
     if(world[k]) return;
     const m=new THREE.Mesh(blockGeo,new THREE.MeshLambertMaterial({map:textures[type]}));
-    m.position.set(x+.5,y+.5,z+.5);
+    m.position.set(x+0.5,y+0.5,z+0.5);
     scene.add(m);
     blocks.push({x,y,z,mesh:m,type});
     world[k]=type;
@@ -123,9 +123,9 @@ function loadChunks(){
 }
 
 /* ===== COLLISION ===== */
-function collide(x,y,z){
+function collide(pos){
     for(const b of blocks){
-        if(Math.abs(b.x+.5-x)<.45 && Math.abs(b.z+.5-z)<.45 && y<b.y+1 && y+1>b.y) return true;
+        if(Math.abs(b.x+0.5-pos.x)<0.48 && Math.abs(b.z+0.5-pos.z)<0.48 && pos.y<b.y+1 && pos.y+1> b.y) return true;
     }
     return false;
 }
@@ -146,12 +146,33 @@ function updateHotbarUI(){
 }
 
 /* ===== KEYBOARD ===== */
-window.addEventListener("keydown",e=>{if(e.key==="w")player.move.forward=true;if(e.key==="s")player.move.back=true;if(e.key==="a")player.move.left=true;if(e.key==="d")player.move.right=true;if(e.key===" ")player.move.jump=true;});
-window.addEventListener("keyup",e=>{if(e.key==="w")player.move.forward=false;if(e.key==="s")player.move.back=false;if(e.key==="a")player.move.left=false;if(e.key==="d")player.move.right=false;if(e.key===" ")player.move.jump=false;});
+window.addEventListener("keydown",e=>{
+    if(e.key==="w")player.move.forward=true;
+    if(e.key==="s")player.move.back=true;
+    if(e.key==="a")player.move.left=true;
+    if(e.key==="d")player.move.right=true;
+    if(e.key===" ")player.move.jump=true;
+});
+window.addEventListener("keyup",e=>{
+    if(e.key==="w")player.move.forward=false;
+    if(e.key==="s")player.move.back=false;
+    if(e.key==="a")player.move.left=false;
+    if(e.key==="d")player.move.right=false;
+    if(e.key===" ")player.move.jump=false;
+});
 
 /* ===== JOYSTICK / LOOK ===== */
-let active=false,joy={x:0,y:0}; joystick.addEventListener("touchstart",()=>active=true); joystick.addEventListener("touchend",()=>{active=false;joy={x:0,y:0};stick.style.left="40px";stick.style.top="40px";});
-joystick.addEventListener("touchmove",e=>{if(!active)return; const t=e.touches[0]; const r=joystick.getBoundingClientRect(); let x=t.clientX-r.left-60; let y=t.clientY-r.top-60; const d=Math.min(40,Math.hypot(x,y)); const a=Math.atan2(y,x); joy.x=Math.cos(a)*d/40; joy.y=Math.sin(a)*d/40; stick.style.left=40+joy.x*40+"px"; stick.style.top=40+joy.y*40+"px";});
+let active=false,joy={x:0,y:0};
+joystick.addEventListener("touchstart",()=>active=true);
+joystick.addEventListener("touchend",()=>{active=false;joy={x:0,y:0};stick.style.left="40px";stick.style.top="40px";});
+joystick.addEventListener("touchmove",e=>{
+    if(!active)return;
+    const t=e.touches[0]; const r=joystick.getBoundingClientRect();
+    let x=t.clientX-r.left-60; let y=t.clientY-r.top-60;
+    const d=Math.min(40,Math.hypot(x,y)); const a=Math.atan2(y,x);
+    joy.x=Math.cos(a)*d/40; joy.y=Math.sin(a)*d/40;
+    stick.style.left=40+joy.x*40+"px"; stick.style.top=40+joy.y*40+"px";
+});
 
 let look=false,last={x:0,y:0};
 window.addEventListener("touchstart",e=>{for(const t of e.touches) if(t.clientX>window.innerWidth/2){look=true;last={x:t.clientX,y:t.clientY};}});
@@ -160,8 +181,21 @@ window.addEventListener("touchend",()=>look=false);
 
 /* ===== ACTION BUTTONS ===== */
 jumpBtn.addEventListener("touchstart",()=>{if(player.onGround){player.vel.y=6;player.onGround=false;}},{passive:false});
-mineBtn.addEventListener("touchstart",()=>{const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw)); const p=player.pos.clone().add(dir); removeBlock(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z));},{passive:false});
-buildBtn.addEventListener("touchstart",()=>{if(inventory[selected]<=0) return; const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw)); const p=player.pos.clone().add(dir); addBlock(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z),selected); inventory[selected]--;updateHotbarUI();},{passive:false});
+mineBtn.addEventListener("touchstart",()=>{
+    const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
+    const p=player.pos.clone().add(dir);
+    removeBlock(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z));
+},{passive:false});
+buildBtn.addEventListener("touchstart",()=>{
+    if(inventory[selected]<=0) return;
+    const dir=new THREE.Vector3(Math.sin(player.yaw),0,-Math.cos(player.yaw));
+    const p=player.pos.clone().add(dir);
+    const px=Math.floor(p.x),py=Math.floor(p.y),pz=Math.floor(p.z);
+    if(!collide(new THREE.Vector3(px+0.5,py+0.5,pz+0.5))){
+        addBlock(px,py,pz,selected);
+        inventory[selected]--;updateHotbarUI();
+    }
+},{passive:false});
 
 /* ===== ANIMATE LOOP ===== */
 const clock=new THREE.Clock();
@@ -171,15 +205,32 @@ function animate(){
 
     loadChunks();
 
-    const dir=new THREE.Vector3(); dir.x=joy.x||0; dir.z=-joy.y||0;
-    if(player.move.forward) dir.z-=1; if(player.move.back) dir.z+=1; if(player.move.left) dir.x-=1; if(player.move.right) dir.x+=1;
+    // Bewegung
+    const dir=new THREE.Vector3();
+    dir.x=(player.move.left?-1:0)+(player.move.right?1:0)+joy.x||0;
+    dir.z=(player.move.forward?-1:0)+(player.move.back?1:0)-joy.y||0;
     if(dir.length()>0) dir.normalize();
-    player.pos.x+=Math.sin(player.yaw)*dir.z*player.speed*dt+Math.cos(player.yaw)*dir.x*player.speed*dt;
-    player.pos.z+=-Math.cos(player.yaw)*dir.z*player.speed*dt+Math.sin(player.yaw)*dir.x*player.speed*dt;
-    if(player.move.jump && player.onGround){player.vel.y=6;player.onGround=false;}
-    player.vel.y-=9.8*dt; player.pos.y+=player.vel.y*dt; if(player.pos.y<2){player.pos.y=2;player.vel.y=0;player.onGround=true;} else player.onGround=false;
 
-    camera.position.copy(player.pos).add(new THREE.Vector3(0,1.6,0));
+    let newPos=player.pos.clone();
+    newPos.x+=Math.sin(player.yaw)*dir.z*player.speed*dt+Math.cos(player.yaw)*dir.x*player.speed*dt;
+    newPos.z+=-Math.cos(player.yaw)*dir.z*player.speed*dt+Math.sin(player.yaw)*dir.x*player.speed*dt;
+    if(!collide(new THREE.Vector3(newPos.x,player.pos.y,newPos.z))){
+        player.pos.x=newPos.x; player.pos.z=newPos.z;
+    }
+
+    // Y Bewegung / Schwerkraft
+    if(player.move.jump && player.onGround){player.vel.y=6;player.onGround=false;}
+    player.vel.y-=9.8*dt;
+    newPos.y=player.pos.y+player.vel.y*dt;
+    if(collide(new THREE.Vector3(player.pos.x,newPos.y,player.pos.z)) || newPos.y<2){
+        player.vel.y=0;
+        player.onGround=true;
+    } else {
+        player.pos.y=newPos.y;
+        player.onGround=false;
+    }
+
+    camera.position.copy(player.pos).add(new THREE.Vector3(0,1.8,0));
     camera.lookAt(camera.position.clone().add(new THREE.Vector3(Math.sin(player.yaw)*10,Math.sin(player.pitch)*10,-Math.cos(player.yaw)*10)));
 
     healthUI.textContent=`❤️ ${player.hp|0}`;
