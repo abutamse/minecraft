@@ -1,347 +1,246 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
 
-/* ===== DOM HELPERS ===== */
+/* ================= DOM ================= */
 const $=id=>document.getElementById(id);
 const joystick=$("joystick"),stick=$("stick");
 const jumpBtn=$("jump"),mineBtn=$("mine"),buildBtn=$("build"),shootBtn=$("shoot");
 const healthUI=$("health"),hungerUI=$("hunger"),coinsUI=$("coins");
 const hotbar=$("hotbar");
 
-/* ===== LOGIN ===== */
-const login=$("login"),startBtn=$("startBtn"),nameInput=$("nameInput");
-let playerName=null;
-startBtn.addEventListener("click",()=>{
-    const name=nameInput.value.trim();
-    if(!name) return alert("Bitte Name eingeben!");
-    playerName=name;
-    login.style.display="none";
-    initGame();
-});
+/* ================= LOGIN ================= */
+$("startBtn").onclick=()=>{
+  if(!$("nameInput").value.trim())return alert("Name!");
+  $("login").style.display="none";
+  init();
+};
 
-/* ===== GAME INIT ===== */
-function initGame(){
+/* ================= GAME ================= */
+function init(){
 
-/* ===== SCENE & CAMERA ===== */
+/* ===== Scene ===== */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
 
-const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
 const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
-window.addEventListener("resize",()=>{
-    camera.aspect=window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth,window.innerHeight);
-});
+onresize=()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+};
 
-/* ===== CROSSHAIR ===== */
+/* ===== Crosshair ===== */
 const cross=document.createElement("div");
 cross.style="position:fixed;top:50%;left:50%;width:6px;height:6px;background:yellow;transform:translate(-50%,-50%);z-index:20";
 document.body.appendChild(cross);
 
-/* ===== LIGHT ===== */
-scene.add(new THREE.AmbientLight(0xffffff,0.7));
-const sun=new THREE.DirectionalLight(0xffffff,0.6);
+/* ===== Light + Day/Night ===== */
+const ambient=new THREE.AmbientLight(0xffffff,0.6);
+scene.add(ambient);
+const sun=new THREE.DirectionalLight(0xffffff,0.8);
 sun.position.set(100,200,100);
 scene.add(sun);
+let time=0;
 
-/* ===== TEXTURES ===== */
-const loader=new THREE.TextureLoader();
-const tex=n=>{const t=loader.load(n);t.magFilter=t.minFilter=THREE.NearestFilter;return t;};
-const textures={
-    grass:tex("grass.png"),
-    dirt:tex("dirt.png"),
-    stone:tex("stone.png"),
-    sand:tex("sand.png"),
-    wood:tex("wood.png"),
-    leaves:tex("leaves.png"),
-    water:tex("water.png"),
-    cow:tex("cow.png") // einfache Tiertextur
+/* ===== Textures ===== */
+const L=new THREE.TextureLoader();
+const T=n=>{const t=L.load(n);t.magFilter=t.minFilter=THREE.NearestFilter;return t;}
+const tex={
+ grass:T("grass.png"),dirt:T("dirt.png"),stone:T("stone.png"),
+ sand:T("sand.png"),wood:T("wood.png"),leaves:T("leaves.png"),
+ water:T("water.png"),cow:T("cow.png")
 };
 
-/* ===== PLAYER ===== */
+/* ===== Player ===== */
 const player={
-    pos:new THREE.Vector3(0,0,0),
-    vel:new THREE.Vector3(),
-    yaw:0,pitch:0,onGround:false,
-    speed:6,width:0.6,height:1.8,
-    hp:100,hunger:100,coins:0,
-    move:{forward:false,back:false,left:false,right:false,jump:false}
+ pos:new THREE.Vector3(0,20,0),
+ vel:new THREE.Vector3(),
+ yaw:0,pitch:0,
+ w:0.6,h:1.8,
+ onGround:false,
+ hp:100,hunger:100,coins:0,
+ move:{f:0,b:0,l:0,r:0,j:0}
 };
 
-/* ===== WORLD ===== */
-const blockGeo=new THREE.BoxGeometry(0.98,0.98,0.98);
-const blocks=[];
-const world={};
-const chunks=new Set();
+/* ===== World ===== */
+const blocks=[],map={};
+const geo=new THREE.BoxGeometry(1,1,1);
 
-function addBlock(x,y,z,type){
-    const k=`${x},${y},${z}`;
-    if(world[k]) return;
-    const m=new THREE.Mesh(blockGeo,new THREE.MeshLambertMaterial({map:textures[type]}));
-    m.position.set(x+0.5,y+0.5,z+0.5);
-    scene.add(m);
-    blocks.push({x,y,z,mesh:m,type});
-    world[k]=type;
+function addBlock(x,y,z,t){
+ const k=`${x},${y},${z}`; if(map[k])return;
+ const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:tex[t]}));
+ m.position.set(x+.5,y+.5,z+.5);
+ scene.add(m);
+ blocks.push({x,y,z,m});
+ map[k]=t;
+}
+function remBlock(x,y,z){
+ const i=blocks.findIndex(b=>b.x==x&&b.y==y&&b.z==z);
+ if(i<0)return;
+ scene.remove(blocks[i].m);
+ blocks.splice(i,1);
+ delete map[`${x},${y},${z}`];
+ inventory[selected]++;
 }
 
-function removeBlock(x,y,z){
-    const k=`${x},${y},${z}`;
-    const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);
-    if(i>-1){
-        scene.remove(blocks[i].mesh);
-        blocks.splice(i,1);
-        delete world[k];
-        inventory[blocks[i].type]=(inventory[blocks[i].type]||0)+1;
-        updateHotbarUI();
-    }
+/* ===== Terrain ===== */
+for(let x=-40;x<40;x++)
+for(let z=-40;z<40;z++){
+ let h=Math.floor(4+Math.sin(x*.15)*3+Math.cos(z*.15)*3);
+ for(let y=0;y<=h;y++){
+  addBlock(x,y,z,y==h?"grass":y>h-2?"dirt":"stone");
+ }
 }
 
-/* ===== TERRAIN ===== */
-function genChunk(cx,cz){
-    for(let x=cx;x<cx+16;x++)
-    for(let z=cz;z<cz+16;z++){
-        let baseHeight = 4;
-        let height = Math.floor(baseHeight + Math.sin(x*0.15)*3 + Math.cos(z*0.15)*3 + Math.random()*1);
+/* ===== Spawn Player Safely ===== */
+player.pos.y=10;
+while(collide(player.pos))player.pos.y++;
 
-        for(let y=0;y<=height;y++){
-            let type="stone";
-            if(y>height-3) type="dirt";
-            if(y===height) type=Math.random()<0.2?"sand":"grass";
-            addBlock(x,y,z,type);
-        }
-
-        // Bäume
-        if(Math.random()<0.08){
-            const h=3+Math.floor(Math.random()*2);
-            for(let i=1;i<=h;i++) addBlock(x,height+i,z,"wood");
-            for(let dx=-1;dx<=1;dx++)
-            for(let dz=-1;dz<=1;dz++) addBlock(x+dx,height+h,z+dz,"leaves");
-        }
-
-        // Wasser
-        if(height<4) for(let y=height+1;y<=3;y++) addBlock(x,y,z,"water");
-    }
+/* ===== Collision ===== */
+function collide(p){
+ for(const b of blocks){
+  if(p.x+player.w/2>b.x&&p.x-player.w/2<b.x+1&&
+     p.y<p.y+player.h&&
+     p.y<b.y+1&&p.y+player.h>b.y&&
+     p.z+player.w/2>b.z&&p.z-player.w/2<b.z+1) return true;
+ }
+ return false;
 }
 
-function loadChunks(){
-    const cx=Math.floor(player.pos.x/16)*16;
-    const cz=Math.floor(player.pos.z/16)*16;
-    for(let dx=-32;dx<=32;dx+=16)
-    for(let dz=-32;dz<=32;dz+=16){
-        const k=`${cx+dx},${cz+dz}`;
-        if(!chunks.has(k)){genChunk(cx+dx,cz+dz);chunks.add(k);}
-    }
-}
-
-/* ===== COLLISION ===== */
-function collide(pos){
-    for(const b of blocks){
-        if(Math.abs(b.x+0.5-pos.x)<player.width/2 &&
-           Math.abs(b.z+0.5-pos.z)<player.width/2 &&
-           pos.y< b.y+1 &&
-           pos.y + player.height> b.y){
-            return true;
-        }
-    }
-    return false;
-}
-
-/* ===== INVENTORY ===== */
-let inventory={grass:5,dirt:5,stone:5,sand:5,wood:5};
+/* ===== Inventory ===== */
+let inventory={grass:10,dirt:10,stone:10,wood:5};
 let selected="grass";
-function updateHotbarUI(){
-    hotbar.innerHTML="";
-    Object.keys(inventory).forEach(k=>{
-        const d=document.createElement("div");
-        d.className="slot"+(k===selected?" active":"");
-        d.textContent=`${k}\n${inventory[k]}`;
-        d.onclick=()=>{selected=k;updateHotbarUI();}
-        hotbar.appendChild(d);
-    });
+function ui(){
+ hotbar.innerHTML="";
+ for(const k in inventory){
+  const d=document.createElement("div");
+  d.className="slot"+(k==selected?" active":"");
+  d.textContent=k+"\n"+inventory[k];
+  d.onclick=()=>{selected=k;ui();}
+  hotbar.appendChild(d);
+ }
 }
 
-/* ===== KEYBOARD ===== */
-window.addEventListener("keydown",e=>{
-    if(e.key==="w")player.move.forward=true;
-    if(e.key==="s")player.move.back=true;
-    if(e.key==="a")player.move.left=true;
-    if(e.key==="d")player.move.right=true;
-    if(e.key===" ")player.move.jump=true;
-});
-window.addEventListener("keyup",e=>{
-    if(e.key==="w")player.move.forward=false;
-    if(e.key==="s")player.move.back=false;
-    if(e.key==="a")player.move.left=false;
-    if(e.key==="d")player.move.right=false;
-    if(e.key===" ")player.move.jump=false;
-});
+/* ===== Input ===== */
+onkeydown=e=>{
+ if(e.key=="w")player.move.f=1;
+ if(e.key=="s")player.move.b=1;
+ if(e.key=="a")player.move.l=1;
+ if(e.key=="d")player.move.r=1;
+ if(e.key==" ")player.move.j=1;
+}
+onkeyup=e=>{
+ if(e.key=="w")player.move.f=0;
+ if(e.key=="s")player.move.b=0;
+ if(e.key=="a")player.move.l=0;
+ if(e.key=="d")player.move.r=0;
+ if(e.key==" ")player.move.j=0;
+};
 
-/* ===== JOYSTICK / LOOK ===== */
-let active=false,joy={x:0,y:0};
-joystick.addEventListener("touchstart",()=>active=true);
-joystick.addEventListener("touchend",()=>{active=false;joy={x:0,y:0};stick.style.left="40px";stick.style.top="40px";});
-joystick.addEventListener("touchmove",e=>{
-    if(!active)return;
-    const t=e.touches[0]; const r=joystick.getBoundingClientRect();
-    let x=t.clientX-r.left-60; let y=t.clientY-r.top-60;
-    const d=Math.min(40,Math.hypot(x,y)); const a=Math.atan2(y,x);
-    joy.x=Math.cos(a)*d/40; joy.y=Math.sin(a)*d/40;
-    stick.style.left=40+joy.x*40+"px"; stick.style.top=40+joy.y*40+"px";
-});
-
-let look=false,last={x:0,y:0};
-window.addEventListener("touchstart",e=>{for(const t of e.touches) if(t.clientX>window.innerWidth/2){look=true;last={x:t.clientX,y:t.clientY};}});
-window.addEventListener("touchmove",e=>{if(!look) return; for(const t of e.touches) if(t.clientX>window.innerWidth/2){player.yaw-=(t.clientX-last.x)*0.004; player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch-(t.clientY-last.y)*0.004)); last={x:t.clientX,y:t.clientY};}});
-window.addEventListener("touchend",()=>look=false);
-
-/* ===== RAYCAST ===== */
-const raycaster=new THREE.Raycaster();
-function getTargetBlock(){
-    raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
-    const intersects=raycaster.intersectObjects(blocks.map(b=>b.mesh));
-    if(intersects.length>0){
-        const blockPos=intersects[0].object.position.clone().subScalar(0.5);
-        const normal=intersects[0].face.normal;
-        return {blockPos,normal};
-    }
-    return null;
+/* ===== Raycast (EXAKT FADENKREUZ) ===== */
+const ray=new THREE.Raycaster();
+function target(add){
+ ray.setFromCamera({x:0,y:0},camera);
+ const hits=ray.intersectObjects(blocks.map(b=>b.m));
+ if(!hits[0])return null;
+ const p=hits[0].object.position;
+ const n=hits[0].face.normal;
+ return add?
+ {x:p.x-.5+n.x,y:p.y-.5+n.y,z:p.z-.5+n.z}:
+ {x:p.x-.5,y:p.y-.5,z:p.z-.5};
 }
 
-/* ===== PROJECTILES ===== */
-const projectiles=[];
-function shoot(){
-    const geometry=new THREE.SphereGeometry(0.1,8,8);
-    const material=new THREE.MeshBasicMaterial({color:0xff0000});
-    const mesh=new THREE.Mesh(geometry,material);
-    mesh.position.copy(camera.position);
-    const dir=new THREE.Vector3(Math.sin(player.yaw),Math.sin(player.pitch),-Math.cos(player.yaw)).normalize();
-    projectiles.push({mesh,dir,speed:20});
-    scene.add(mesh);
-}
+/* ===== Actions ===== */
+mineBtn.ontouchstart=()=>{const t=target();if(t)remBlock(t.x|0,t.y|0,t.z|0)};
+buildBtn.ontouchstart=()=>{if(!inventory[selected])return;
+ const t=target(1); if(!t)return;
+ addBlock(t.x|0,t.y|0,t.z|0,selected); inventory[selected]--; ui();
+};
+jumpBtn.ontouchstart=()=>{if(player.onGround){player.vel.y=6;player.onGround=0;}};
 
-/* ===== ANIMAL SYSTEM ===== */
+/* ===== Shooting ===== */
+const shots=[];
+shootBtn.ontouchstart=()=>{
+ const g=new THREE.SphereGeometry(.1);
+ const m=new THREE.MeshBasicMaterial({color:0xff0000});
+ const s=new THREE.Mesh(g,m);
+ s.position.copy(camera.position);
+ s.dir=new THREE.Vector3(Math.sin(player.yaw),Math.sin(player.pitch),-Math.cos(player.yaw));
+ shots.push(s); scene.add(s);
+};
+
+/* ===== Animals ===== */
 const animals=[];
-function spawnAnimal(x,y,z){
-    const geo=new THREE.BoxGeometry(0.8,0.8,0.8);
-    const mat=new THREE.MeshLambertMaterial({map:textures.cow});
-    const mesh=new THREE.Mesh(geo,mat);
-    mesh.position.set(x+0.5,y+0.4,z+0.5);
-    scene.add(mesh);
-    animals.push({mesh,vel:new THREE.Vector3(),hp:10});
+for(let i=0;i<6;i++){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,.8),new THREE.MeshLambertMaterial({map:tex.cow}));
+ m.position.set(Math.random()*20-10,10,Math.random()*20-10);
+ while(collide({x:m.position.x,y:m.position.y,z:m.position.z}))m.position.y++;
+ m.hp=10; animals.push(m); scene.add(m);
 }
 
-/* ===== ACTION BUTTONS ===== */
-jumpBtn.addEventListener("touchstart",()=>{if(player.onGround) {player.vel.y=6;player.onGround=false;}},{passive:false});
-mineBtn.addEventListener("touchstart",()=>{
-    const target=getTargetBlock();
-    if(target){
-        const b=target.blockPos;
-        removeBlock(Math.floor(b.x),Math.floor(b.y),Math.floor(b.z));
-    }
-},{passive:false});
-buildBtn.addEventListener("touchstart",()=>{
-    if(inventory[selected]<=0) return;
-    const target=getTargetBlock();
-    if(target){
-        const b=target.blockPos;
-        const n=target.normal;
-        const px=Math.floor(b.x+n.x);
-        const py=Math.floor(b.y+n.y);
-        const pz=Math.floor(b.z+n.z);
-        if(!collide(new THREE.Vector3(px+0.5,py+0.5,pz+0.5))){
-            addBlock(px,py,pz,selected);
-            inventory[selected]--;
-            updateHotbarUI();
-        }
-    }
-},{passive:false});
-shootBtn.addEventListener("touchstart",shoot);
-
-/* ===== ANIMATE LOOP ===== */
+/* ===== Loop ===== */
 const clock=new THREE.Clock();
-loadChunks();
+function loop(){
+ requestAnimationFrame(loop);
+ const dt=clock.getDelta();
 
-// Set player above Boden
-let maxY=0;
-for(const b of blocks){ if(b.x===0 && b.z===0 && b.y>maxY) maxY=b.y; }
-player.pos.set(0.5,maxY+player.height,0.5);
+ /* Day/Night */
+ time+=dt*.02;
+ sun.intensity=.2+Math.max(0,Math.sin(time));
+ ambient.intensity=.2+sun.intensity;
 
-// Spawn ein paar Tiere
-for(let i=0;i<5;i++){
-    spawnAnimal(Math.floor(Math.random()*20-10),0,Math.floor(Math.random()*20-10));
+ /* Hunger */
+ player.hunger-=dt*.5;
+ if(player.hunger<0){player.hp-=dt*5;player.hunger=0;}
+
+ /* Movement */
+ let dx=(player.move.r-player.move.l);
+ let dz=(player.move.b-player.move.f);
+ const l=Math.hypot(dx,dz); if(l){dx/=l;dz/=l;}
+ player.pos.x+=Math.cos(player.yaw)*dx*6*dt+Math.sin(player.yaw)*dz*6*dt;
+ player.pos.z+=-Math.sin(player.yaw)*dx*6*dt+Math.cos(player.yaw)*dz*6*dt;
+ if(collide(player.pos)){player.pos.x-=dx;player.pos.z-=dz;}
+
+ player.vel.y-=9.8*dt;
+ if(player.move.j&&player.onGround){player.vel.y=6;player.onGround=0;}
+ player.pos.y+=player.vel.y*dt;
+ if(collide(player.pos)){player.pos.y=Math.ceil(player.pos.y);player.vel.y=0;player.onGround=1;}
+
+ /* Camera */
+ camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
+ camera.lookAt(camera.position.clone().add(
+  new THREE.Vector3(Math.sin(player.yaw),Math.sin(player.pitch),-Math.cos(player.yaw))
+ ));
+
+ /* Animals */
+ for(const a of animals){
+  const d=a.position.clone().sub(player.pos);
+  if(d.length()<6)d.normalize();
+  else d.set(Math.random()-.5,0,Math.random()-.5).normalize();
+  a.position.add(d.multiplyScalar(dt));
+ }
+
+ /* Shots */
+ for(let i=shots.length-1;i>=0;i--){
+  const s=shots[i];
+  s.position.add(s.dir.clone().multiplyScalar(20*dt));
+  for(const a of animals){
+   if(s.position.distanceTo(a.position)<.5){
+    a.hp-=5; scene.remove(s); shots.splice(i,1);
+    if(a.hp<=0){scene.remove(a);player.coins+=5;}
+   }
+  }
+ }
+
+ healthUI.textContent="❤️ "+player.hp|0;
+ hungerUI.textContent="🍖 "+player.hunger|0+"%";
+ coinsUI.textContent="🪙 "+player.coins;
+
+ renderer.render(scene,camera);
 }
-
-function animate(){
-    requestAnimationFrame(animate);
-    const dt=clock.getDelta();
-
-    loadChunks();
-
-    // Bewegung
-    const dir=new THREE.Vector3();
-    dir.x=(player.move.left?-1:0)+(player.move.right?1:0)+joy.x||0;
-    dir.z=(player.move.forward?-1:0)+(player.move.back?1:0)-joy.y||0;
-    if(dir.length()>0) dir.normalize();
-
-    let newPos=player.pos.clone();
-    newPos.x+=Math.sin(player.yaw)*dir.z*player.speed*dt+Math.cos(player.yaw)*dir.x*player.speed*dt;
-    newPos.z+=-Math.cos(player.yaw)*dir.z*player.speed*dt+Math.sin(player.yaw)*dir.x*player.speed*dt;
-    if(!collide(new THREE.Vector3(newPos.x,player.pos.y,newPos.z))){
-        player.pos.x=newPos.x; player.pos.z=newPos.z;
-    }
-
-    // Y-Bewegung / Schwerkraft
-    if(player.move.jump && player.onGround){player.vel.y=6;player.onGround=false;}
-    player.vel.y-=9.8*dt;
-    newPos.y=player.pos.y+player.vel.y*dt;
-    let feet=new THREE.Vector3(player.pos.x,newPos.y,player.pos.z);
-    if(collide(feet) || newPos.y<0){
-        player.vel.y=0;
-        player.onGround=true;
-    } else {
-        player.pos.y=newPos.y;
-        player.onGround=false;
-    }
-
-    // Kamera
-    camera.position.copy(player.pos).add(new THREE.Vector3(0,player.height,0));
-    camera.lookAt(camera.position.clone().add(new THREE.Vector3(Math.sin(player.yaw)*10,Math.sin(player.pitch)*10,-Math.cos(player.yaw)*10)));
-
-    // Tiere bewegen
-    for(const a of animals){
-        const moveDir=new THREE.Vector3(Math.random()-0.5,0,Math.random()-0.5);
-        moveDir.normalize().multiplyScalar(1*dt);
-        a.mesh.position.add(moveDir);
-    }
-
-    // Projectiles bewegen & check collision
-    for(let i=projectiles.length-1;i>=0;i--){
-        const p=projectiles[i];
-        p.mesh.position.add(p.dir.clone().multiplyScalar(p.speed*dt));
-
-        // Prüfen Tiere
-        for(const a of animals){
-            if(p.mesh.position.distanceTo(a.mesh.position)<0.5){
-                a.hp-=5;
-                scene.remove(p.mesh);
-                projectiles.splice(i,1);
-                if(a.hp<=0){scene.remove(a.mesh);animals.splice(animals.indexOf(a),1);}
-                break;
-            }
-        }
-    }
-
-    updateHotbarUI();
-    healthUI.textContent=`❤️ ${player.hp|0}`;
-    hungerUI.textContent=`🍖 ${player.hunger|0}%`;
-    coinsUI.textContent=`🪙 ${player.coins}`;
-
-    renderer.render(scene,camera);
+ui(); loop();
 }
-
-animate();
-} // initGame
