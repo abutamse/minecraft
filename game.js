@@ -1,22 +1,22 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
 
-const $ = id => document.getElementById(id);
+const $=id=>document.getElementById(id);
 
 /* LOGIN */
-$("startBtn").onclick = () => {
-  if(!$("nameInput").value.trim()) return alert("Name eingeben!");
+$("startBtn").onclick=()=>{
+  if(!$("nameInput").value.trim())return alert("Name eingeben!");
   $("login").style.display="none";
-  initGame();
+  init();
 };
 
-function initGame(){
+function init(){
 
 /* SCENE */
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
+const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
@@ -38,12 +38,23 @@ const sun=new THREE.DirectionalLight(0xffffff,.8);
 sun.position.set(100,200,100);
 scene.add(sun);
 
+/* TEXTURES */
+const loader=new THREE.TextureLoader();
+function tex(n){const t=loader.load(n);t.magFilter=t.minFilter=THREE.NearestFilter;return t;}
+const textures={
+  grass:tex("grass.png"),
+  dirt:tex("dirt.png"),
+  stone:tex("stone.png"),
+  sand:tex("sand.png")
+};
+
 /* PLAYER */
 const player={
   pos:new THREE.Vector3(0,10,0),
   vel:new THREE.Vector3(),
   yaw:0,pitch:0,
-  hp:100,hunger:100,onGround:false
+  onGround:false,
+  hp:100,hunger:100
 };
 
 /* JOYSTICK */
@@ -86,7 +97,7 @@ renderer.domElement.addEventListener("touchend",()=>look=false);
 const blocks=[],world={},geo=new THREE.BoxGeometry(1,1,1);
 function addBlock(x,y,z,t){
   const k=`${x},${y},${z}`;if(world[k])return;
-  const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x55aa55}));
+  const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:textures[t]}));
   m.position.set(x+.5,y+.5,z+.5);
   scene.add(m);
   blocks.push({x,y,z,mesh:m,type:t});
@@ -95,8 +106,8 @@ function addBlock(x,y,z,t){
 function removeBlock(x,y,z){
   const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);
   if(i<0)return;
-  scene.remove(blocks[i].mesh);
   inventory[blocks[i].type]=(inventory[blocks[i].type]||0)+1;
+  scene.remove(blocks[i].mesh);
   blocks.splice(i,1);
   delete world[`${x},${y},${z}`];
   updateHotbar();
@@ -104,10 +115,12 @@ function removeBlock(x,y,z){
 
 /* TERRAIN */
 function gen(cx,cz){
-  for(let x=cx-15;x<=cx+15;x++)
-  for(let z=cz-15;z<=cz+15;z++){
+  for(let x=cx-16;x<=cx+16;x++)
+  for(let z=cz-16;z<=cz+16;z++){
+    if(world[`${x},0,${z}`])continue;
     const h=3+Math.sin(x*.2)*2+Math.cos(z*.2)*2;
-    for(let y=0;y<=h;y++) addBlock(x,y,z,"dirt");
+    for(let y=0;y<=h;y++)
+      addBlock(x,y,z,y===h?"grass":"dirt");
   }
 }
 
@@ -117,15 +130,14 @@ function target(add){
   ray.setFromCamera({x:0,y:0},camera);
   const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0];
   if(!hit)return null;
-  const p=hit.object.position;
-  const n=hit.face.normal;
+  const p=hit.object.position,n=hit.face.normal;
   return add
     ? {x:p.x-0.5+n.x,y:p.y-0.5+n.y,z:p.z-0.5+n.z}
     : {x:p.x-0.5,y:p.y-0.5,z:p.z-0.5};
 }
 
 /* INVENTORY */
-let inventory={dirt:0};
+let inventory={grass:0,dirt:0};
 let selected="dirt";
 function updateHotbar(){
   $("hotbar").innerHTML="";
@@ -152,14 +164,13 @@ function loop(){
 
   gen(Math.floor(player.pos.x),Math.floor(player.pos.z));
 
-  const f=-joy.y;
-  const s=joy.x;
+  const f=-joy.y,s=joy.x;
   player.pos.x+=(Math.sin(player.yaw)*f+Math.cos(player.yaw)*s)*6*dt;
   player.pos.z+=(Math.cos(player.yaw)*f-Math.sin(player.yaw)*s)*6*dt;
 
   player.vel.y-=9.8*dt;
   player.pos.y+=player.vel.y*dt;
-  if(player.pos.y<1){player.pos.y=1;player.vel.y=0;player.onGround=true;}
+  if(player.pos.y<2){player.pos.y=2;player.vel.y=0;player.onGround=true;}
 
   camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
   camera.lookAt(
