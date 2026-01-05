@@ -25,10 +25,14 @@ function initGame() {
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
+/* ================= CAMERA ================= */
+// Kamera nimmt gesamten Bildschirm ein
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 10, 0);
+
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(devicePixelRatio);
+renderer.setPixelRatio(window.devicePixelRatio);
 renderer.domElement.style.position="fixed";
 renderer.domElement.style.inset="0";
 document.body.appendChild(renderer.domElement);
@@ -74,7 +78,9 @@ let joyActive=false,joyDir={x:0,y:0};
 let joyStart={x:0,y:0};
 joyStick.addEventListener("touchstart",(e)=>{
   e.preventDefault();
-  joyActive=true; const t=e.touches[0]; joyStart={x:t.clientX,y:t.clientY};
+  joyActive=true; 
+  const t=e.touches[0]; 
+  joyStart={x:t.clientX,y:t.clientY};
 });
 joyStick.addEventListener("touchmove",(e)=>{
   if(!joyActive) return;
@@ -121,17 +127,21 @@ function addBlock(x,y,z,type){const k=`${x},${y},${z}`;if(world[k])return; const
 function removeBlock(x,y,z){const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);if(i<0)return; scene.remove(blocks[i].mesh); blocks.splice(i,1); delete world[`${x},${y},${z}`];}
 
 /* ================= TERRAIN ================= */
-for(let x=-20;x<=20;x++)for(let z=-20;z<=20;z++){
-  const h=Math.floor(4+Math.sin(x*0.2)*2+Math.cos(z*0.2)*2);
-  for(let y=0;y<=h;y++){
-    if(y===h){ if(h<3)addBlock(x,y,z,"sand"); else addBlock(x,y,z,"grass"); }
-    else addBlock(x,y,z,"dirt");
+function generateTerrain(cx,cz){
+  for(let x=cx-20;x<=cx+20;x++)
+  for(let z=cz-20;z<=cz+20;z++){
+    const h=Math.floor(4+Math.sin(x*0.2)*2+Math.cos(z*0.2)*2);
+    for(let y=0;y<=h;y++){
+      if(y===h){ if(h<3)addBlock(x,y,z,"sand"); else addBlock(x,y,z,"grass"); }
+      else addBlock(x,y,z,"dirt");
+    }
+    if(h<2)addBlock(x,1,z,"water");
   }
-  if(h<2)addBlock(x,1,z,"water");
 }
 
 /* ================= COLLISION ================= */
 function collides(pos){
+  if(pos.y<1) pos.y=1; // unendlicher Boden
   for(const b of blocks){
     if(pos.x+player.width/2 > b.x &&
        pos.x-player.width/2 < b.x+1 &&
@@ -147,7 +157,7 @@ while(collides(player.pos)) player.pos.y++;
 /* ================= RAYCAST ================= */
 const ray=new THREE.Raycaster();
 function getTarget(add){
-  ray.setFromCamera({x:0,y:0},camera);
+  ray.setFromCamera({x:0,y:0},camera); // immer mittig
   const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0];
   if(!hit) return null;
   const p=hit.object.position;
@@ -207,7 +217,7 @@ function animate(){
   requestAnimationFrame(animate);
   const dt=clock.getDelta();
 
-  // Bewegung Joystick + Keys
+  // Joystick + Keys Bewegung
   let mx=keys.d-keys.a + joyDir.x;
   let mz=keys.w-keys.s + joyDir.y;
   const l=Math.hypot(mx,mz); if(l){ mx/=l; mz/=l; }
@@ -216,9 +226,9 @@ function animate(){
   player.pos.x+=dx*6*dt; if(collides(player.pos)) player.pos.x-=dx*6*dt;
   player.pos.z+=dz*6*dt; if(collides(player.pos)) player.pos.z-=dz*6*dt;
 
-  // Gravitation
+  // Gravitation / Boden fix
   player.vel.y-=9.8*dt; player.pos.y+=player.vel.y*dt;
-  if(collides(player.pos)){ player.vel.y=0; player.onGround=true; player.pos.y=Math.ceil(player.pos.y);} else player.onGround=false;
+  if(collides(player.pos)){ player.vel.y=0; player.onGround=true; player.pos.y=Math.max(1,Math.ceil(player.pos.y));} else player.onGround=false;
 
   // Kamera
   camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
@@ -242,6 +252,9 @@ function animate(){
   if(player.hp<=0){ alert("Du bist gestorben!"); location.reload(); }
 
   renderer.render(scene,camera);
+
+  // Dynamisches Terrain generieren (unendlich)
+  generateTerrain(Math.floor(player.pos.x),Math.floor(player.pos.z));
 }
 animate();
 }
