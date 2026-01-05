@@ -50,10 +50,18 @@ const sun = new THREE.DirectionalLight(0xffffff,0.8);
 sun.position.set(100,200,100);
 scene.add(sun);
 
-/* ================= TEXTURE ================= */
+/* ================= TEXTURES ================= */
 const loader = new THREE.TextureLoader();
-function tex(name){const t=loader.load(name);t.magFilter=t.minFilter=THREE.NearestFilter;return t;}
-const textures = { grass:tex("grass.png"), dirt:tex("dirt.png"), stone:tex("stone.png"), sand:tex("sand.png"), water:tex("water.png"), wood:tex("wood.png"), leaves:tex("leaves.png") };
+function tex(name){ const t=loader.load(name); t.magFilter=t.minFilter=THREE.NearestFilter; return t; }
+const textures = {
+  grass: tex("grass.png"),
+  dirt: tex("dirt.png"),
+  stone: tex("stone.png"),
+  sand: tex("sand.png"),
+  water: tex("water.png"),
+  wood: tex("wood.png"),
+  leaves: tex("leaves.png")
+};
 
 /* ================= PLAYER ================= */
 const player = {pos:new THREE.Vector3(0,10,0),vel:new THREE.Vector3(),yaw:0,pitch:0,width:0.6,height:1.8,onGround:false,hp:100,hunger:100,coins:0};
@@ -64,18 +72,26 @@ const keys={w:0,a:0,s:0,d:0};
 /* ================= JOYSTICK ================= */
 let joyActive=false,joyDir={x:0,y:0};
 let joyStart={x:0,y:0};
-joyStick.addEventListener("touchstart",(e)=>{ joyActive=true; const t=e.touches[0]; joyStart={x:t.clientX,y:t.clientY}; });
-joyStick.addEventListener("touchmove",(e)=>{ 
-  if(!joyActive) return; 
-  const t=e.touches[0]; 
-  let dx=t.clientX-joyStart.x; 
-  let dy=t.clientY-joyStart.y; 
-  const dist=Math.min(Math.hypot(dx,dy),50); 
-  const angle=Math.atan2(dy,dx); 
-  joyDir={x:Math.cos(angle)*(dist/50),y:Math.sin(angle)*(dist/50)}; 
-  joyStick.style.transform=`translate(${dx}px,${dy}px)`; 
+joyStick.addEventListener("touchstart",(e)=>{
+  e.preventDefault();
+  joyActive=true; const t=e.touches[0]; joyStart={x:t.clientX,y:t.clientY};
 });
-joyStick.addEventListener("touchend",()=>{ joyActive=false; joyDir={x:0,y:0}; joyStick.style.transform=`translate(0px,0px)`; });
+joyStick.addEventListener("touchmove",(e)=>{
+  if(!joyActive) return;
+  e.preventDefault();
+  const t=e.touches[0]; 
+  let dx=t.clientX-joyStart.x;
+  let dy=t.clientY-joyStart.y;
+  const dist=Math.min(Math.hypot(dx,dy),50);
+  const angle=Math.atan2(dy,dx);
+  joyDir={x:Math.cos(angle)*(dist/50),y:Math.sin(angle)*(dist/50)};
+  joyStick.style.transform=`translate(${dx}px,${dy}px)`;
+});
+joyStick.addEventListener("touchend",()=>{
+  joyActive=false;
+  joyDir={x:0,y:0};
+  joyStick.style.transform=`translate(0px,0px)`;
+});
 
 /* ================= TOUCH LOOK ================= */
 let lookActive=false,lookStartPos={x:0,y:0};
@@ -107,7 +123,10 @@ function removeBlock(x,y,z){const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===
 /* ================= TERRAIN ================= */
 for(let x=-20;x<=20;x++)for(let z=-20;z<=20;z++){
   const h=Math.floor(4+Math.sin(x*0.2)*2+Math.cos(z*0.2)*2);
-  for(let y=0;y<=h;y++){if(y===h){if(h<3)addBlock(x,y,z,"sand");else addBlock(x,y,z,"grass");}else addBlock(x,y,z,"dirt");}
+  for(let y=0;y<=h;y++){
+    if(y===h){ if(h<3)addBlock(x,y,z,"sand"); else addBlock(x,y,z,"grass"); }
+    else addBlock(x,y,z,"dirt");
+  }
   if(h<2)addBlock(x,1,z,"water");
 }
 
@@ -141,12 +160,11 @@ mineBtn.onclick=()=>{ const t=getTarget(false); if(t) removeBlock(t.x|0,t.y|0,t.
 buildBtn.onclick=()=>{ const t=getTarget(true); if(t) addBlock(t.x|0,t.y|0,t.z|0,selected); };
 jumpBtn.onclick=()=>{ if(player.onGround){player.vel.y=6; player.onGround=false;} };
 shootBtn.onclick=shoot;
-["jump","mine","build","shoot"].forEach(id=>{ $(id).addEventListener("touchstart",()=>{ $(id).click(); }); });
 
 /* ================= INVENTAR ================= */
 let inventory={grass:20,dirt:20,stone:10,sand:10};
 let selected="grass";
-function updateHotbar(){ hotbar.innerHTML=""; for(const k in inventory){const d=document.createElement("div");d.className="slot"+(k===selected?" active":""); d.textContent=k+"\n"+inventory[k]; d.onclick=()=>{selected=k; updateHotbar();}; hotbar.appendChild(d);} }
+function updateHotbar(){ hotbar.innerHTML=""; for(const k in inventory){ const d=document.createElement("div"); d.className="slot"+(k===selected?" active":""); d.textContent=k+"\n"+inventory[k]; d.onclick=()=>{selected=k; updateHotbar();}; hotbar.appendChild(d);} }
 updateHotbar();
 
 /* ================= TIERE ================= */
@@ -155,7 +173,7 @@ const aGeo=new THREE.BoxGeometry(0.8,0.8,1);
 const aMat=new THREE.MeshLambertMaterial({color:0xffffff});
 function spawnAnimal(x,z){ const m=new THREE.Mesh(aGeo,aMat.clone()); m.position.set(x+0.5,5,z+0.5); scene.add(m); animals.push({mesh:m,hp:10,dir:new THREE.Vector3(Math.random()-.5,0,Math.random()-.5).normalize(),t:2}); }
 for(let i=0;i<6;i++) spawnAnimal(Math.random()*20-10, Math.random()*20-10);
-function updateAnimals(dt){for(const a of animals){a.t-=dt;if(a.t<=0){a.dir.set(Math.random()-.5,0,Math.random()-.5).normalize();a.t=2+Math.random()*2;} const next=a.mesh.position.clone().add(a.dir.clone().multiplyScalar(1.5*dt)); a.mesh.position.copy(next);}}
+function updateAnimals(dt){for(const a of animals){a.t-=dt;if(a.t<=0){a.dir.set(Math.random()-.5,0,Math.random()-.5).normalize(); a.t=2+Math.random()*2;} const next=a.mesh.position.clone().add(a.dir.clone().multiplyScalar(1.5*dt)); a.mesh.position.copy(next);}}
 
 /* ================= BULLETS ================= */
 const bullets=[];
@@ -182,7 +200,7 @@ channel.onmessage=e=>{
 };
 window.addEventListener("beforeunload",()=>{ channel.postMessage({id:playerId,disconnect:true}); });
 
-/* ================= ANIMATION LOOP ================= */
+/* ================= ANIMATE LOOP ================= */
 const clock=new THREE.Clock();
 let hungerTimer=0;
 function animate(){
@@ -213,7 +231,7 @@ function animate(){
   updateBullets(dt);
 
   // Hunger
-  hungerTimer+=dt; if(hungerTimer>3){ hungerTimer=0; player.hunger--; if(player.hunger<0){player.hunger=0; player.hp--; } }
+  hungerTimer+=dt; if(hungerTimer>3){ hungerTimer=0; player.hunger--; if(player.hunger<0){ player.hunger=0; player.hp--; } }
 
   // UI
   healthUI.textContent="❤️ "+player.hp;
@@ -226,5 +244,4 @@ function animate(){
   renderer.render(scene,camera);
 }
 animate();
-
-} // initGame Ende
+}
