@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 
 /* LOGIN */
 $("startBtn").onclick=()=>{
-  if(!$("nameInput").value.trim())return alert("Name eingeben!");
+  if(!$("nameInput").value.trim()) return alert("Name eingeben!");
   $("login").style.display="none";
   init();
 };
@@ -40,7 +40,11 @@ scene.add(sun);
 
 /* TEXTURES */
 const loader=new THREE.TextureLoader();
-function tex(n){const t=loader.load(n);t.magFilter=t.minFilter=THREE.NearestFilter;return t;}
+function tex(n){
+  const t=loader.load(n);
+  t.magFilter=t.minFilter=THREE.NearestFilter;
+  return t;
+}
 const textures={
   grass:tex("grass.png"),
   dirt:tex("dirt.png"),
@@ -57,7 +61,7 @@ const player={
   hp:100,hunger:100
 };
 
-/* JOYSTICK */
+/* JOYSTICK – RICHTIG GEMAPPT */
 let joy={x:0,y:0},active=false,start={x:0,y:0};
 $("joyStick").addEventListener("touchstart",e=>{
   active=true;
@@ -65,38 +69,39 @@ $("joyStick").addEventListener("touchstart",e=>{
   start.y=e.touches[0].clientY;
 });
 $("joyStick").addEventListener("touchmove",e=>{
-  if(!active)return;
+  if(!active) return;
   const dx=e.touches[0].clientX-start.x;
   const dy=e.touches[0].clientY-start.y;
-  const d=Math.min(Math.hypot(dx,dy),40);
-  const a=Math.atan2(dy,dx);
-  joy.x=Math.cos(a)*(d/40);
-  joy.y=Math.sin(a)*(d/40);
+  const dist=Math.min(Math.hypot(dx,dy),40);
+  const ang=Math.atan2(dy,dx);
+  joy.x=Math.cos(ang)*(dist/40); // links / rechts
+  joy.y=Math.sin(ang)*(dist/40); // vor / zurück
   $("joyStick").style.transform=`translate(${joy.x*30}px,${joy.y*30}px)`;
 });
 $("joyStick").addEventListener("touchend",()=>{
-  active=false;joy.x=joy.y=0;
+  active=false; joy.x=joy.y=0;
   $("joyStick").style.transform="translate(0,0)";
 });
 
 /* LOOK */
 let look=false,lx=0,ly=0;
 renderer.domElement.addEventListener("touchstart",e=>{
-  look=true;lx=e.touches[0].clientX;ly=e.touches[0].clientY;
+  look=true; lx=e.touches[0].clientX; ly=e.touches[0].clientY;
 });
 renderer.domElement.addEventListener("touchmove",e=>{
-  if(!look)return;
+  if(!look) return;
   player.yaw-=(e.touches[0].clientX-lx)*0.003;
   player.pitch-=(e.touches[0].clientY-ly)*0.003;
   player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch));
-  lx=e.touches[0].clientX;ly=e.touches[0].clientY;
+  lx=e.touches[0].clientX; ly=e.touches[0].clientY;
 });
 renderer.domElement.addEventListener("touchend",()=>look=false);
 
 /* WORLD */
 const blocks=[],world={},geo=new THREE.BoxGeometry(1,1,1);
 function addBlock(x,y,z,t){
-  const k=`${x},${y},${z}`;if(world[k])return;
+  const k=`${x},${y},${z}`;
+  if(world[k]) return;
   const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:textures[t]}));
   m.position.set(x+.5,y+.5,z+.5);
   scene.add(m);
@@ -105,7 +110,7 @@ function addBlock(x,y,z,t){
 }
 function removeBlock(x,y,z){
   const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);
-  if(i<0)return;
+  if(i<0) return;
   inventory[blocks[i].type]=(inventory[blocks[i].type]||0)+1;
   scene.remove(blocks[i].mesh);
   blocks.splice(i,1);
@@ -113,23 +118,26 @@ function removeBlock(x,y,z){
   updateHotbar();
 }
 
-/* TERRAIN */
+/* TERRAIN – ECHTER BODEN */
 function gen(cx,cz){
-  for(let x=cx-16;x<=cx+16;x++)
-  for(let z=cz-16;z<=cz+16;z++){
-    if(world[`${x},0,${z}`])continue;
-    const h=3+Math.sin(x*.2)*2+Math.cos(z*.2)*2;
-    for(let y=0;y<=h;y++)
-      addBlock(x,y,z,y===h?"grass":"dirt");
+  for(let x=cx-12;x<=cx+12;x++)
+  for(let z=cz-12;z<=cz+12;z++){
+    if(world[`${x},0,${z}`]) continue;
+    const h=Math.floor(4+Math.sin(x*.2)*2+Math.cos(z*.2)*2);
+    for(let y=0;y<=h;y++){
+      if(y===0) addBlock(x,y,z,"stone");
+      else if(y===h) addBlock(x,y,z,"grass");
+      else addBlock(x,y,z,"dirt");
+    }
   }
 }
 
-/* RAYCAST */
+/* RAYCAST – GELBER PUNKT */
 const ray=new THREE.Raycaster();
 function target(add){
   ray.setFromCamera({x:0,y:0},camera);
   const hit=ray.intersectObjects(blocks.map(b=>b.mesh))[0];
-  if(!hit)return null;
+  if(!hit) return null;
   const p=hit.object.position,n=hit.face.normal;
   return add
     ? {x:p.x-0.5+n.x,y:p.y-0.5+n.y,z:p.z-0.5+n.z}
@@ -137,7 +145,7 @@ function target(add){
 }
 
 /* INVENTORY */
-let inventory={grass:0,dirt:0};
+let inventory={grass:0,dirt:0,stone:0};
 let selected="dirt";
 function updateHotbar(){
   $("hotbar").innerHTML="";
@@ -164,13 +172,19 @@ function loop(){
 
   gen(Math.floor(player.pos.x),Math.floor(player.pos.z));
 
-  const f=-joy.y,s=joy.x;
-  player.pos.x+=(Math.sin(player.yaw)*f+Math.cos(player.yaw)*s)*6*dt;
-  player.pos.z+=(Math.cos(player.yaw)*f-Math.sin(player.yaw)*s)*6*dt;
+  const forward=-joy.y;
+  const side=joy.x;
+
+  player.pos.x+=(Math.sin(player.yaw)*forward+Math.cos(player.yaw)*side)*6*dt;
+  player.pos.z+=(Math.cos(player.yaw)*forward-Math.sin(player.yaw)*side)*6*dt;
 
   player.vel.y-=9.8*dt;
   player.pos.y+=player.vel.y*dt;
-  if(player.pos.y<2){player.pos.y=2;player.vel.y=0;player.onGround=true;}
+  if(player.pos.y<2){
+    player.pos.y=2;
+    player.vel.y=0;
+    player.onGround=true;
+  }
 
   camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
   camera.lookAt(
