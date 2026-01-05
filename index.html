@@ -10,8 +10,6 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;}
 #login{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:100;}
 #login input{padding:10px;font-size:18px;margin-bottom:10px;}
 #login button{padding:10px 20px;font-size:18px;}
-#joystick{position:fixed;left:20px;bottom:20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.15);z-index:10;}
-#stick{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.7);}
 .control{position:fixed;right:20px;padding:14px;background:rgba(0,0,0,.6);color:white;border-radius:8px;z-index:10;text-align:center;}
 #jump{bottom:200px;}
 #mine{bottom:140px;}
@@ -31,9 +29,6 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;}
     <button id="startBtn">Start</button>
 </div>
 
-<!-- JOYSTICK -->
-<div id="joystick"><div id="stick"></div></div>
-
 <!-- ACTION BUTTONS -->
 <div id="jump" class="control">JUMP</div>
 <div id="mine" class="control">MINE</div>
@@ -50,7 +45,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;}
 <!-- HOTBAR -->
 <div id="hotbar"></div>
 
-<!-- GAME SCRIPT -->
+<!-- SCRIPT -->
 <script type="module" src="game.js"></script>
 
 </body>
