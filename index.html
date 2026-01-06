@@ -47,6 +47,7 @@ canvas{
   left:10px;
   color:white;
   z-index:20;
+  font-size:16px;
 }
 
 /* HOTBAR */
@@ -65,6 +66,7 @@ canvas{
   color:white;
   border-radius:4px;
   font-size:12px;
+  text-align:center;
 }
 .slot.active{
   outline:2px solid yellow;
@@ -91,13 +93,14 @@ canvas{
   color:white;
   border-radius:8px;
   z-index:20;
+  font-size:16px;
 }
 #jump{bottom:200px;}
 #mine{bottom:140px;}
 #build{bottom:80px;}
 #shoot{bottom:20px;}
 
-/* JOYSTICK */
+/* JOYSTICK LEFT */
 #joyBase{
   position:fixed;
   left:20px;
@@ -130,6 +133,7 @@ canvas{
 <div id="ui">
   <div id="health">❤️ 100</div>
   <div id="hunger">🍖 100%</div>
+  <div id="coins">🪙 0</div>
 </div>
 
 <div id="hotbar"></div>
