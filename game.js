@@ -32,7 +32,7 @@ const sun=new THREE.DirectionalLight(0xffffff,0.8);
 sun.position.set(100,200,100);
 scene.add(sun);
 
-/* TEXTURES (7) */
+/* TEXTURES */
 const loader=new THREE.TextureLoader();
 const tex=n=>{const t=loader.load(n);t.magFilter=t.minFilter=THREE.NearestFilter;return t;};
 const textures={
@@ -49,14 +49,25 @@ const textures={
 const player={
   pos:new THREE.Vector3(0,12,0),
   vel:new THREE.Vector3(),
-  yaw:0,
-  pitch:0,
-  width:0.6,
-  height:1.8,
+  yaw:0,pitch:0,
+  width:0.6,height:1.8,
   onGround:false,
-  hp:100,
-  hunger:100
+  hp:100,hunger:100
 };
+
+/* INVENTORY */
+const inventory={grass:0,dirt:0,stone:0,sand:0,wood:0,leaves:0};
+function updateHotbar(){
+  const h=$("hotbar");
+  h.innerHTML="";
+  for(const k in inventory){
+    const d=document.createElement("div");
+    d.className="slot";
+    d.textContent=`${k}: ${inventory[k]}`;
+    h.appendChild(d);
+  }
+}
+updateHotbar();
 
 /* WORLD */
 const geo=new THREE.BoxGeometry(1,1,1);
@@ -69,13 +80,15 @@ function addBlock(x,y,z,type){
   const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:textures[type]}));
   m.position.set(x+0.5,y+0.5,z+0.5);
   scene.add(m);
-  blocks.push({x,y,z,mesh:m});
+  blocks.push({x,y,z,mesh:m,type});
   world[k]=1;
 }
 
 function removeBlock(x,y,z){
   const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);
   if(i<0)return;
+  inventory[blocks[i].type]++;
+  updateHotbar();
   scene.remove(blocks[i].mesh);
   blocks.splice(i,1);
   delete world[`${x},${y},${z}`];
@@ -92,17 +105,27 @@ function gen(cx,cz){
         else addBlock(x,y,z,"grass");
       }else if(y<h-2){
         addBlock(x,y,z,"stone");
-      }else{
-        addBlock(x,y,z,"dirt");
-      }
+      }else addBlock(x,y,z,"dirt");
     }
-    if(h<=1)addBlock(x,1,z,"water");
     if(Math.random()<0.02){
       addBlock(x,h+1,z,"wood");
       addBlock(x,h+2,z,"leaves");
     }
   }
 }
+
+/* ANIMALS */
+const animals=[];
+function spawnAnimal(x,z){
+  const m=new THREE.Mesh(
+    new THREE.BoxGeometry(0.8,0.8,1),
+    new THREE.MeshLambertMaterial({color:0xffffff})
+  );
+  m.position.set(x,10,z);
+  scene.add(m);
+  animals.push({mesh:m,dir:new THREE.Vector3(Math.random()-.5,0,Math.random()-.5)});
+}
+for(let i=0;i<6;i++)spawnAnimal(Math.random()*20-10,Math.random()*20-10);
 
 /* COLLISION */
 function collides(p){
@@ -119,7 +142,7 @@ function collides(p){
   return false;
 }
 
-/* RAYCAST – MITTE */
+/* RAYCAST */
 const ray=new THREE.Raycaster();
 function getTarget(add){
   const dir=new THREE.Vector3();
@@ -137,21 +160,9 @@ function getTarget(add){
 /* BUTTONS */
 $("mine").onclick=()=>{const t=getTarget(false);if(t)removeBlock(t.x|0,t.y|0,t.z|0);};
 $("build").onclick=()=>{const t=getTarget(true);if(t)addBlock(t.x|0,t.y|0,t.z|0,"dirt");};
-$("jump").onclick=()=>{if(player.onGround){player.vel.y=6;player.onGround=false;}};
+$("jump").onclick=()=>{if(player.onGround){player.vel.y=6;}};
 
-/* SHOOT */
-const bullets=[];
-$("shoot").onclick=()=>{
-  const b=new THREE.Mesh(new THREE.SphereGeometry(0.1),new THREE.MeshBasicMaterial({color:0xff0000}));
-  b.position.copy(camera.position);
-  const d=new THREE.Vector3();
-  camera.getWorldDirection(d);
-  b.dir=d.clone();
-  bullets.push(b);
-  scene.add(b);
-};
-
-/* JOYSTICK */
+/* JOYSTICK (RICHTIG) */
 let jx=0,jy=0,active=false,sx=0,sy=0;
 $("joyBase").addEventListener("touchstart",e=>{
   active=true;
@@ -160,16 +171,10 @@ $("joyBase").addEventListener("touchstart",e=>{
 });
 $("joyBase").addEventListener("touchmove",e=>{
   if(!active)return;
-  const dx=e.touches[0].clientX-sx;
-  const dy=sy-e.touches[0].clientY;
-  jx=Math.max(-1,Math.min(1,dx/40));
-  jy=Math.max(-1,Math.min(1,dy/40));
-  $("joyStick").style.transform=`translate(${jx*30}px,${-jy*30}px)`;
+  jx=Math.max(-1,Math.min(1,(e.touches[0].clientX-sx)/40));
+  jy=Math.max(-1,Math.min(1,(sy-e.touches[0].clientY)/40));
 });
-$("joyBase").addEventListener("touchend",()=>{
-  active=false;jx=jy=0;
-  $("joyStick").style.transform="translate(0,0)";
-});
+$("joyBase").addEventListener("touchend",()=>{jx=jy=0;active=false;});
 
 /* LOOK */
 let drag=false,lx=0,ly=0;
@@ -185,7 +190,6 @@ addEventListener("pointermove",e=>{
 
 /* LOOP */
 const clock=new THREE.Clock();
-let hungerTimer=0;
 function loop(){
   requestAnimationFrame(loop);
   const dt=clock.getDelta();
@@ -201,23 +205,11 @@ function loop(){
   player.pos.y+=player.vel.y*dt;
   if(collides(player.pos)){
     player.vel.y=0;
-    player.onGround=true;
     player.pos.y=Math.ceil(player.pos.y);
-  }else player.onGround=false;
-
-  const cx=Math.floor(player.pos.x/16)*16;
-  const cz=Math.floor(player.pos.z/16)*16;
-  gen(cx,cz);
-
-  hungerTimer+=dt;
-  if(hungerTimer>3){
-    hungerTimer=0;
-    player.hunger--;
-    if(player.hunger<0){player.hunger=0;player.hp--;}
+    player.onGround=true;
   }
 
-  $("health").textContent="❤️ "+player.hp;
-  $("hunger").textContent="🍖 "+player.hunger+"%";
+  gen(Math.floor(player.pos.x/16)*16,Math.floor(player.pos.z/16)*16);
 
   camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
   camera.lookAt(
@@ -225,10 +217,6 @@ function loop(){
     camera.position.y+Math.sin(player.pitch),
     camera.position.z+Math.cos(player.yaw)
   );
-
-  for(let i=bullets.length-1;i>=0;i--){
-    bullets[i].position.add(bullets[i].dir.clone().multiplyScalar(20*dt));
-  }
 
   renderer.render(scene,camera);
 }
