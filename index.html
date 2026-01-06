@@ -48,6 +48,8 @@ canvas{
   color:white;
   z-index:20;
 }
+
+/* HOTBAR */
 #hotbar{
   position:fixed;
   bottom:10px;
@@ -58,14 +60,17 @@ canvas{
   z-index:20;
 }
 .slot{
+  padding:6px 8px;
   background:rgba(0,0,0,.6);
-  padding:6px;
-  border-radius:4px;
   color:white;
+  border-radius:4px;
   font-size:12px;
 }
+.slot.active{
+  outline:2px solid yellow;
+}
 
-/* CROSS */
+/* CROSSHAIR */
 #cross{
   position:fixed;
   left:50%;
