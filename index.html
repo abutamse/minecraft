@@ -48,8 +48,24 @@ canvas{
   color:white;
   z-index:20;
 }
+#hotbar{
+  position:fixed;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:6px;
+  z-index:20;
+}
+.slot{
+  background:rgba(0,0,0,.6);
+  padding:6px;
+  border-radius:4px;
+  color:white;
+  font-size:12px;
+}
 
-/* CROSSHAIR */
+/* CROSS */
 #cross{
   position:fixed;
   left:50%;
@@ -61,7 +77,7 @@ canvas{
   z-index:30;
 }
 
-/* BUTTONS RECHTS */
+/* BUTTONS RIGHT */
 .control{
   position:fixed;
   right:15px;
@@ -70,7 +86,6 @@ canvas{
   color:white;
   border-radius:8px;
   z-index:20;
-  text-align:center;
 }
 #jump{bottom:200px;}
 #mine{bottom:140px;}
@@ -112,6 +127,7 @@ canvas{
   <div id="hunger">🍖 100%</div>
 </div>
 
+<div id="hotbar"></div>
 <div id="cross"></div>
 
 <div id="jump" class="control">JUMP</div>
@@ -119,9 +135,7 @@ canvas{
 <div id="build" class="control">BUILD</div>
 <div id="shoot" class="control">SHOOT</div>
 
-<div id="joyBase">
-  <div id="joyStick"></div>
-</div>
+<div id="joyBase"><div id="joyStick"></div></div>
 
 <script type="module" src="game.js"></script>
 </body>
