@@ -142,7 +142,7 @@ const otherPlayers = new Map();
 // Spawn melden
 socket.emit("spawn",{name:player.name,pos:player.pos.toArray()});
 
-// Spieler updates empfangen
+// Spieler Updates empfangen
 socket.on("updatePlayers", data=>{
   for(const p of data){
     if(p.id===socket.id) continue;
@@ -158,33 +158,28 @@ socket.on("updatePlayers", data=>{
 
 socket.on("removePlayer", id=>{ if(otherPlayers.has(id)){ scene.remove(otherPlayers.get(id).mesh); otherPlayers.delete(id); } });
 
-// Block sync
-socket.on("addBlock", data=>{ const k=key(data.x,data.y,data.z); if(world.has(k)) return; addBlock(data.x,data.y,data.z,data.type); });
-socket.on("removeBlock", data=>{ const k=key(data.x,data.y,data.z); const idx=blocks.findIndex(b=>b.x===data.x&&b.y===data.y&&b.z===data.z); if(idx>-1){scene.remove(blocks[idx].mesh); blocks.splice(idx,1); world.delete(k);} });
+// Block Sync
+socket.on("addBlock", data=>{ addBlock(data.x,data.y,data.z,data.type); });
+socket.on("removeBlock", data=>{
+  const idx=blocks.findIndex(b=>b.x===data.x&&b.y===data.y&&b.z===data.z);
+  if(idx>-1){ scene.remove(blocks[idx].mesh); blocks.splice(idx,1); world.delete(key(data.x,data.y,data.z)); }
+});
 
 // Position senden
 setInterval(()=>{ socket.emit("move",{pos:player.pos.toArray()}); },50);
 
-/* ========= ACTIONS ========= */
-$("mine").onclick = ()=>{
-  const h=getHit(); if(!h) return;
-  const p=h.object.position;
-  const x=Math.floor(p.x-0.5),y=Math.floor(p.y-0.5),z=Math.floor(p.z-0.5);
-  socket.emit("removeBlock",{x,y,z});
-};
+/* ========= BUTTON FIX ========= */
+function bindButton(id, callback){
+  const el = $(id);
+  el.addEventListener("pointerdown", e => { e.preventDefault(); callback(); });
+  el.addEventListener("touchstart", e => { e.preventDefault(); callback(); });
+}
 
-$("build").onclick = ()=>{
-  const h=getHit(); if(!h) return;
-  const p=h.object.position,n=h.face.normal;
-  const x=Math.floor(p.x-0.5+n.x), y=Math.floor(p.y-0.5+n.y), z=Math.floor(p.z-0.5+n.z);
-  socket.emit("addBlock",{x,y,z,type:"dirt"});
-};
-
-$("jump").onclick = ()=>{ if(player.onGround){ player.vel.y=8; player.onGround=false; } };
-
-$("shoot").onclick = ()=>{ const h=getHit(); if(h) socket.emit("removeBlock",{x:Math.floor(h.object.position.x-0.5), y:Math.floor(h.object.position.y-0.5), z:Math.floor(h.object.position.z-0.5)}); };
-
-$("eatMeat").onclick = ()=>{ $("hunger").innerText=`🍖 ${Math.min(100,parseInt($("hunger").innerText.slice(2))+20)}%`; };
+bindButton("mine",()=>{ const h=getHit(); if(!h) return; const p=h.object.position; const x=Math.floor(p.x-0.5),y=Math.floor(p.y-0.5),z=Math.floor(p.z-0.5); socket.emit("removeBlock",{x,y,z}); });
+bindButton("build",()=>{ const h=getHit(); if(!h) return; const p=h.object.position,n=h.face.normal; const x=Math.floor(p.x-0.5+n.x),y=Math.floor(p.y-0.5+n.y),z=Math.floor(p.z-0.5+n.z); socket.emit("addBlock",{x,y,z,type:"dirt"}); });
+bindButton("jump",()=>{ if(player.onGround){ player.vel.y=8; player.onGround=false; } });
+bindButton("shoot",()=>{ const h=getHit(); if(!h) return; const x=Math.floor(h.object.position.x-0.5),y=Math.floor(h.object.position.y-0.5),z=Math.floor(h.object.position.z-0.5); socket.emit("removeBlock",{x,y,z}); });
+bindButton("eatMeat",()=>{ const hungerVal=parseInt($("hunger").innerText.slice(2)); $("hunger").innerText=`🍖 ${Math.min(100,hungerVal+20)}%`; });
 
 /* ========= LOOP ========= */
 const clock = new THREE.Clock();
