@@ -1,9 +1,9 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
-const $=id=>document.getElementById(id);
+const $ = id => document.getElementById(id);
 
 /* LOGIN */
 $("startBtn").onclick=()=>{
-  if(!$("nameInput").value.trim())return;
+  if(!$("nameInput").value.trim()) return;
   $("login").style.display="none";
   init();
 };
@@ -47,7 +47,7 @@ const textures={
 
 /* PLAYER */
 const player={
-  pos:new THREE.Vector3(0,12,0),
+  pos:new THREE.Vector3(0,15,0),
   vel:new THREE.Vector3(),
   yaw:0,pitch:0,
   width:0.6,height:1.8,
@@ -57,13 +57,16 @@ const player={
 
 /* INVENTORY */
 const inventory={grass:0,dirt:0,stone:0,sand:0,wood:0,leaves:0};
+let selected="dirt";
+
 function updateHotbar(){
   const h=$("hotbar");
   h.innerHTML="";
   for(const k in inventory){
     const d=document.createElement("div");
-    d.className="slot";
-    d.textContent=`${k}: ${inventory[k]}`;
+    d.className="slot"+(k===selected?" active":"");
+    d.textContent=`${k} ${inventory[k]}`;
+    d.onclick=()=>{selected=k;updateHotbar();};
     h.appendChild(d);
   }
 }
@@ -72,40 +75,41 @@ updateHotbar();
 /* WORLD */
 const geo=new THREE.BoxGeometry(1,1,1);
 const blocks=[];
-const world={};
+const world=new Set(); // verhindert Respawn
 
 function addBlock(x,y,z,type){
   const k=`${x},${y},${z}`;
-  if(world[k])return;
+  if(world.has(k)) return;
   const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:textures[type]}));
   m.position.set(x+0.5,y+0.5,z+0.5);
   scene.add(m);
   blocks.push({x,y,z,mesh:m,type});
-  world[k]=1;
+  world.add(k);
 }
 
 function removeBlock(x,y,z){
   const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);
-  if(i<0)return;
+  if(i<0) return;
   inventory[blocks[i].type]++;
   updateHotbar();
   scene.remove(blocks[i].mesh);
+  world.delete(`${x},${y},${z}`);
   blocks.splice(i,1);
-  delete world[`${x},${y},${z}`];
 }
 
-/* UNENDLICHE WELT */
+/* TERRAIN (KEIN RESPAWN) */
 function gen(cx,cz){
   for(let x=cx-16;x<cx+16;x++)
   for(let z=cz-16;z<cz+16;z++){
     const h=Math.floor(4+Math.sin(x*0.2)*2+Math.cos(z*0.2)*2);
     for(let y=0;y<=h;y++){
+      const k=`${x},${y},${z}`;
+      if(world.has(k)) continue;
       if(y===h){
         if(h<=2)addBlock(x,y,z,"sand");
         else addBlock(x,y,z,"grass");
-      }else if(y<h-2){
-        addBlock(x,y,z,"stone");
-      }else addBlock(x,y,z,"dirt");
+      }else if(y<h-2)addBlock(x,y,z,"stone");
+      else addBlock(x,y,z,"dirt");
     }
     if(Math.random()<0.02){
       addBlock(x,h+1,z,"wood");
@@ -113,19 +117,6 @@ function gen(cx,cz){
     }
   }
 }
-
-/* ANIMALS */
-const animals=[];
-function spawnAnimal(x,z){
-  const m=new THREE.Mesh(
-    new THREE.BoxGeometry(0.8,0.8,1),
-    new THREE.MeshLambertMaterial({color:0xffffff})
-  );
-  m.position.set(x,10,z);
-  scene.add(m);
-  animals.push({mesh:m,dir:new THREE.Vector3(Math.random()-.5,0,Math.random()-.5)});
-}
-for(let i=0;i<6;i++)spawnAnimal(Math.random()*20-10,Math.random()*20-10);
 
 /* COLLISION */
 function collides(p){
@@ -137,12 +128,12 @@ function collides(p){
       p.z-player.width/2<b.z+1 &&
       p.y<b.y+1 &&
       p.y+player.height>b.y
-    )return true;
+    ) return true;
   }
   return false;
 }
 
-/* RAYCAST */
+/* RAYCAST (MITTE) */
 const ray=new THREE.Raycaster();
 function getTarget(add){
   const dir=new THREE.Vector3();
@@ -159,8 +150,43 @@ function getTarget(add){
 
 /* BUTTONS */
 $("mine").onclick=()=>{const t=getTarget(false);if(t)removeBlock(t.x|0,t.y|0,t.z|0);};
-$("build").onclick=()=>{const t=getTarget(true);if(t)addBlock(t.x|0,t.y|0,t.z|0,"dirt");};
+$("build").onclick=()=>{
+  if(inventory[selected]<=0) return;
+  const t=getTarget(true);
+  if(t){
+    inventory[selected]--;
+    updateHotbar();
+    addBlock(t.x|0,t.y|0,t.z|0,selected);
+  }
+};
 $("jump").onclick=()=>{if(player.onGround){player.vel.y=6;}};
+
+/* ANIMALS */
+const animals=[];
+function spawnAnimal(x,z){
+  const m=new THREE.Mesh(
+    new THREE.BoxGeometry(0.8,0.8,1),
+    new THREE.MeshLambertMaterial({color:0xffffff})
+  );
+  m.position.set(x,5,z);
+  scene.add(m);
+  animals.push({mesh:m,hp:10});
+}
+for(let i=0;i<6;i++) spawnAnimal(Math.random()*20-10,Math.random()*20-10);
+
+/* SHOOT */
+const bullets=[];
+$("shoot").onclick=()=>{
+  const b=new THREE.Mesh(
+    new THREE.SphereGeometry(0.1),
+    new THREE.MeshBasicMaterial({color:0xff0000})
+  );
+  b.position.copy(camera.position);
+  b.dir=new THREE.Vector3();
+  camera.getWorldDirection(b.dir);
+  bullets.push(b);
+  scene.add(b);
+};
 
 /* JOYSTICK (RICHTIG) */
 let jx=0,jy=0,active=false,sx=0,sy=0;
@@ -173,8 +199,12 @@ $("joyBase").addEventListener("touchmove",e=>{
   if(!active)return;
   jx=Math.max(-1,Math.min(1,(e.touches[0].clientX-sx)/40));
   jy=Math.max(-1,Math.min(1,(sy-e.touches[0].clientY)/40));
+  $("joyStick").style.transform=`translate(${jx*30}px,${-jy*30}px)`;
 });
-$("joyBase").addEventListener("touchend",()=>{jx=jy=0;active=false;});
+$("joyBase").addEventListener("touchend",()=>{
+  jx=jy=0;active=false;
+  $("joyStick").style.transform="translate(0,0)";
+});
 
 /* LOOK */
 let drag=false,lx=0,ly=0;
@@ -190,6 +220,7 @@ addEventListener("pointermove",e=>{
 
 /* LOOP */
 const clock=new THREE.Clock();
+let hungerTimer=0;
 function loop(){
   requestAnimationFrame(loop);
   const dt=clock.getDelta();
@@ -207,9 +238,37 @@ function loop(){
     player.vel.y=0;
     player.pos.y=Math.ceil(player.pos.y);
     player.onGround=true;
+  }else player.onGround=false;
+
+  const cx=Math.floor(player.pos.x/16)*16;
+  const cz=Math.floor(player.pos.z/16)*16;
+  gen(cx,cz);
+
+  for(let i=bullets.length-1;i>=0;i--){
+    bullets[i].position.add(bullets[i].dir.clone().multiplyScalar(20*dt));
+    for(let j=animals.length-1;j>=0;j--){
+      if(bullets[i].position.distanceTo(animals[j].mesh.position)<0.6){
+        animals[j].hp-=5;
+        scene.remove(bullets[i]);
+        bullets.splice(i,1);
+        if(animals[j].hp<=0){
+          scene.remove(animals[j].mesh);
+          animals.splice(j,1);
+        }
+        break;
+      }
+    }
   }
 
-  gen(Math.floor(player.pos.x/16)*16,Math.floor(player.pos.z/16)*16);
+  hungerTimer+=dt;
+  if(hungerTimer>3){
+    hungerTimer=0;
+    player.hunger--;
+    if(player.hunger<0){player.hunger=0;player.hp--;}
+  }
+
+  $("health").textContent="❤️ "+player.hp;
+  $("hunger").textContent="🍖 "+player.hunger+"%";
 
   camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
   camera.lookAt(
