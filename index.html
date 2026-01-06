@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
 <title>Mini Minecraft Mobile</title>
 
 <style>
@@ -13,7 +13,7 @@ html,body{
   height:100%;
   overflow:hidden;
   background:black;
-  font-family:sans-serif;
+  touch-action:none;
 }
 canvas{
   position:fixed;
@@ -34,10 +34,34 @@ canvas{
   align-items:center;
   z-index:100;
 }
-#login input{padding:10px;font-size:18px;margin-bottom:10px;}
-#login button{padding:10px 20px;font-size:18px;}
+#login input,#login button{
+  padding:12px;
+  font-size:18px;
+  margin:6px;
+}
 
-/* BUTTONS RECHTS */
+/* UI */
+#ui{
+  position:fixed;
+  top:10px;
+  left:10px;
+  color:white;
+  z-index:20;
+}
+
+/* CROSSHAIR */
+#cross{
+  position:fixed;
+  left:50%;
+  top:50%;
+  width:6px;
+  height:6px;
+  background:yellow;
+  transform:translate(-50%,-50%);
+  z-index:30;
+}
+
+/* BUTTONS (RECHTS) */
 .control{
   position:fixed;
   right:15px;
@@ -45,64 +69,33 @@ canvas{
   background:rgba(0,0,0,.6);
   color:white;
   border-radius:8px;
-  z-index:10;
-  user-select:none;
+  z-index:20;
+  text-align:center;
 }
 #jump{bottom:200px;}
 #mine{bottom:140px;}
 #build{bottom:80px;}
 #shoot{bottom:20px;}
 
-/* UI */
-#ui{
-  position:fixed;
-  left:10px;
-  top:10px;
-  color:white;
-  z-index:10;
-}
-
-/* HOTBAR */
-#hotbar{
-  position:fixed;
-  bottom:10px;
-  left:50%;
-  transform:translateX(-50%);
-  display:flex;
-  gap:5px;
-  z-index:10;
-}
-.slot{
-  padding:5px 10px;
-  background:rgba(0,0,0,.6);
-  color:white;
-  border-radius:4px;
-}
-.slot.active{background:rgba(255,255,0,.8);}
-
 /* JOYSTICK */
-#joystick{
+#joyBase{
   position:fixed;
   left:20px;
-  bottom:20px;
+  bottom:40px;
   width:120px;
   height:120px;
-  z-index:10;
-}
-#joyBase{
-  width:100%;
-  height:100%;
-  background:rgba(0,0,0,0.3);
   border-radius:50%;
+  background:rgba(255,255,255,0.1);
+  z-index:20;
 }
 #joyStick{
-  width:60px;
-  height:60px;
-  background:rgba(255,255,0,0.8);
-  border-radius:50%;
   position:absolute;
-  left:30px;
-  top:30px;
+  left:40px;
+  top:40px;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.5);
 }
 </style>
 </head>
@@ -114,20 +107,19 @@ canvas{
   <button id="startBtn">Start</button>
 </div>
 
-<div id="jump" class="control">JUMP</div>
-<div id="mine" class="control">MINE</div>
-<div id="build" class="control">BUILD</div>
-<div id="shoot" class="control">SHOOT</div>
-
 <div id="ui">
   <div id="health">❤️ 100</div>
   <div id="hunger">🍖 100%</div>
 </div>
 
-<div id="hotbar"></div>
+<div id="cross"></div>
 
-<div id="joystick">
-  <div id="joyBase"></div>
+<div id="jump" class="control">JUMP</div>
+<div id="mine" class="control">MINE</div>
+<div id="build" class="control">BUILD</div>
+<div id="shoot" class="control">SHOOT</div>
+
+<div id="joyBase">
   <div id="joyStick"></div>
 </div>
 
