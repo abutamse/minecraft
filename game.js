@@ -1,20 +1,19 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
+import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js";
 
-/* ========= DOM ========= */
-const $ = id => document.getElementById(id);
+const $ = id=>document.getElementById(id);
 
-/* ========= LOGIN ========= */
 $("startBtn").onclick = () => {
-  if (!$("nameInput").value.trim()) return;
+  if(!$("nameInput").value.trim()) return;
   $("login").style.display = "none";
-  init();
+  init($("nameInput").value.trim());
 };
 
-function init(){
+function init(playerName){
 
 /* ========= RENDERER ========= */
 const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
@@ -22,7 +21,7 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
 window.addEventListener("resize",()=>{
   camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
@@ -51,11 +50,10 @@ const textures = {
 
 /* ========= PLAYER ========= */
 const player = {
-  pos: new THREE.Vector3(0,30,0),
-  vel: new THREE.Vector3(),
-  yaw:0,
-  pitch:0,
-  onGround:false
+  name:playerName,
+  pos:new THREE.Vector3(0,30,0),
+  vel:new THREE.Vector3(),
+  yaw:0,pitch:0,onGround:false
 };
 
 /* ========= WORLD ========= */
@@ -66,15 +64,13 @@ const CHUNK = 16;
 const chunks = new Set();
 const key=(x,y,z)=>`${x},${y},${z}`;
 
-function heightAt(x,z){
-  return Math.floor(6 + Math.sin(x*0.15)*3 + Math.cos(z*0.15)*3);
-}
+function heightAt(x,z){ return Math.floor(6+Math.sin(x*0.15)*3+Math.cos(z*0.15)*3); }
 
 function addBlock(x,y,z,type){
   const k=key(x,y,z);
   if(world.has(k)) return;
   const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:textures[type]}));
-  m.position.set(x+.5,y+.5,z+.5);
+  m.position.set(x+0.5,y+0.5,z+0.5);
   scene.add(m);
   blocks.push({x,y,z,mesh:m});
   world.set(k,true);
@@ -94,34 +90,37 @@ function genChunk(cx,cz){
 }
 
 function groundY(x,z){
-  const xi=Math.floor(x), zi=Math.floor(z);
+  const xi=Math.floor(x),zi=Math.floor(z);
   for(let y=50;y>=-5;y--){
     if(world.has(key(xi,y,zi))) return y+1;
   }
   return -Infinity;
 }
 
+/* ========= ENTITIES ========= */
+const animals = [];
+function addAnimal(x,y,z){
+  const mat = new THREE.MeshLambertMaterial({color:0xffffff});
+  const mesh = new THREE.Mesh(geo,mat);
+  mesh.position.set(x+0.5,y+0.5,z+0.5);
+  scene.add(mesh);
+  animals.push({mesh,pos:new THREE.Vector3(x,y,z)});
+}
+addAnimal(5,10,5); addAnimal(-8,10,3);
+
 /* ========= JOYSTICK ========= */
-let jx=0,jy=0;
-$("joyBase").addEventListener("touchstart",e=>{
-  const t=e.touches[0];
-  joyStartX=t.clientX; joyStartY=t.clientY;
-});
-let joyStartX=0,joyStartY=0;
+let jx=0,jy=0,joyStartX=0,joyStartY=0;
+$("joyBase").addEventListener("touchstart",e=>{ const t=e.touches[0]; joyStartX=t.clientX; joyStartY=t.clientY; });
 $("joyBase").addEventListener("touchmove",e=>{
   const t=e.touches[0];
-  jx=(t.clientX-joyStartX)/40;
-  jy=(joyStartY-t.clientY)/40;
-  jx=Math.max(-1,Math.min(1,jx));
-  jy=Math.max(-1,Math.min(1,jy));
+  jx=(t.clientX-joyStartX)/40; jy=(joyStartY-t.clientY)/40;
+  jx=Math.max(-1,Math.min(1,jx)); jy=Math.max(-1,Math.min(1,jy));
 });
 $("joyBase").addEventListener("touchend",()=>jx=jy=0);
 
 /* ========= LOOK ========= */
 let drag=false,lx=0,ly=0;
-renderer.domElement.addEventListener("pointerdown",e=>{
-  drag=true; lx=e.clientX; ly=e.clientY;
-});
+renderer.domElement.addEventListener("pointerdown",e=>{ drag=true; lx=e.clientX; ly=e.clientY; });
 addEventListener("pointerup",()=>drag=false);
 addEventListener("pointermove",e=>{
   if(!drag) return;
@@ -131,45 +130,67 @@ addEventListener("pointermove",e=>{
   lx=e.clientX; ly=e.clientY;
 });
 
-/* ========= RAYCAST (CENTER) ========= */
-const ray=new THREE.Raycaster();
-const center=new THREE.Vector2(0,0);
+/* ========= RAYCAST ========= */
+const ray = new THREE.Raycaster();
+const center = new THREE.Vector2(0,0);
+function getHit(){ ray.setFromCamera(center,camera); return ray.intersectObjects(blocks.map(b=>b.mesh))[0]; }
 
-function getHit(){
-  ray.setFromCamera(center,camera);
-  return ray.intersectObjects(blocks.map(b=>b.mesh))[0];
-}
+/* ========= SOCKET.IO ========= */
+const socket = io("http://localhost:3000");
+const otherPlayers = new Map();
 
-$("mine").onclick=()=>{
-  const h=getHit();
-  if(!h) return;
+// Spawn melden
+socket.emit("spawn",{name:player.name,pos:player.pos.toArray()});
+
+// Spieler updates empfangen
+socket.on("updatePlayers", data=>{
+  for(const p of data){
+    if(p.id===socket.id) continue;
+    if(!otherPlayers.has(p.id)){
+      const mesh = new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x00ff00}));
+      scene.add(mesh);
+      otherPlayers.set(p.id,{name:p.name,mesh,pos:new THREE.Vector3()});
+    }
+    const op = otherPlayers.get(p.id);
+    op.pos.fromArray(p.pos); op.mesh.position.copy(op.pos).addScalar(0.5);
+  }
+});
+
+socket.on("removePlayer", id=>{ if(otherPlayers.has(id)){ scene.remove(otherPlayers.get(id).mesh); otherPlayers.delete(id); } });
+
+// Block sync
+socket.on("addBlock", data=>{ const k=key(data.x,data.y,data.z); if(world.has(k)) return; addBlock(data.x,data.y,data.z,data.type); });
+socket.on("removeBlock", data=>{ const k=key(data.x,data.y,data.z); const idx=blocks.findIndex(b=>b.x===data.x&&b.y===data.y&&b.z===data.z); if(idx>-1){scene.remove(blocks[idx].mesh); blocks.splice(idx,1); world.delete(k);} });
+
+// Position senden
+setInterval(()=>{ socket.emit("move",{pos:player.pos.toArray()}); },50);
+
+/* ========= ACTIONS ========= */
+$("mine").onclick = ()=>{
+  const h=getHit(); if(!h) return;
   const p=h.object.position;
-  const x=Math.floor(p.x-.5),y=Math.floor(p.y-.5),z=Math.floor(p.z-.5);
-  const i=blocks.findIndex(b=>b.x===x&&b.y===y&&b.z===z);
-  if(i>-1){scene.remove(blocks[i].mesh);blocks.splice(i,1);world.delete(key(x,y,z));}
+  const x=Math.floor(p.x-0.5),y=Math.floor(p.y-0.5),z=Math.floor(p.z-0.5);
+  socket.emit("removeBlock",{x,y,z});
 };
 
-$("build").onclick=()=>{
-  const h=getHit();
-  if(!h) return;
+$("build").onclick = ()=>{
+  const h=getHit(); if(!h) return;
   const p=h.object.position,n=h.face.normal;
-  addBlock(
-    Math.floor(p.x-.5+n.x),
-    Math.floor(p.y-.5+n.y),
-    Math.floor(p.z-.5+n.z),
-    "dirt"
-  );
+  const x=Math.floor(p.x-0.5+n.x), y=Math.floor(p.y-0.5+n.y), z=Math.floor(p.z-0.5+n.z);
+  socket.emit("addBlock",{x,y,z,type:"dirt"});
 };
 
-$("jump").onclick=()=>{
-  if(player.onGround){player.vel.y=8;player.onGround=false;}
-};
+$("jump").onclick = ()=>{ if(player.onGround){ player.vel.y=8; player.onGround=false; } };
+
+$("shoot").onclick = ()=>{ const h=getHit(); if(h) socket.emit("removeBlock",{x:Math.floor(h.object.position.x-0.5), y:Math.floor(h.object.position.y-0.5), z:Math.floor(h.object.position.z-0.5)}); };
+
+$("eatMeat").onclick = ()=>{ $("hunger").innerText=`🍖 ${Math.min(100,parseInt($("hunger").innerText.slice(2))+20)}%`; };
 
 /* ========= LOOP ========= */
-const clock=new THREE.Clock();
+const clock = new THREE.Clock();
 function loop(){
   requestAnimationFrame(loop);
-  const dt=clock.getDelta();
+  const dt = clock.getDelta();
 
   const cx=Math.floor(player.pos.x/CHUNK)*CHUNK;
   const cz=Math.floor(player.pos.z/CHUNK)*CHUNK;
@@ -177,31 +198,19 @@ function loop(){
   for(let dz=-2;dz<=2;dz++)
     genChunk(cx+dx*CHUNK,cz+dz*CHUNK);
 
-  const forward=new THREE.Vector3(
-    Math.sin(player.yaw),0,Math.cos(player.yaw)
-  );
+  const forward=new THREE.Vector3(Math.sin(player.yaw),0,Math.cos(player.yaw));
   const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0));
-
   player.pos.add(forward.multiplyScalar(jy*6*dt));
   player.pos.add(right.multiplyScalar(jx*6*dt));
 
-  player.vel.y-=20*dt;
-  player.pos.y+=player.vel.y*dt;
-
-  const gy=groundY(player.pos.x,player.pos.z);
-  if(player.pos.y<=gy){
-    player.pos.y=gy;
-    player.vel.y=0;
-    player.onGround=true;
-  }
+  player.vel.y-=20*dt; player.pos.y+=player.vel.y*dt;
+  const gy = groundY(player.pos.x,player.pos.z);
+  if(player.pos.y<=gy){ player.pos.y=gy; player.vel.y=0; player.onGround=true; }
 
   camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
-  camera.lookAt(
-    camera.position.x+Math.sin(player.yaw),
-    camera.position.y+Math.sin(player.pitch),
-    camera.position.z+Math.cos(player.yaw)
-  );
+  camera.lookAt(camera.position.x+Math.sin(player.yaw),camera.position.y+Math.sin(player.pitch),camera.position.z+Math.cos(player.yaw));
 
+  for(const a of animals) a.mesh.position.copy(a.pos);
   renderer.render(scene,camera);
 }
 loop();
