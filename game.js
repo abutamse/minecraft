@@ -168,11 +168,12 @@ socket.on("removeBlock", data=>{
 // Position senden
 setInterval(()=>{ socket.emit("move",{pos:player.pos.toArray()}); },50);
 
-/* ========= BUTTON FIX ========= */
+/* ========= BUTTON FIX (Mobile-kompatibel) ========= */
 function bindButton(id, callback){
   const el = $(id);
-  el.addEventListener("pointerdown", e => { e.preventDefault(); callback(); });
-  el.addEventListener("touchstart", e => { e.preventDefault(); callback(); });
+  el.style.pointerEvents = "auto";  // sehr wichtig
+  el.addEventListener("pointerup", e => { e.preventDefault(); callback(); });
+  el.addEventListener("touchend", e => { e.preventDefault(); callback(); });
 }
 
 bindButton("mine",()=>{ const h=getHit(); if(!h) return; const p=h.object.position; const x=Math.floor(p.x-0.5),y=Math.floor(p.y-0.5),z=Math.floor(p.z-0.5); socket.emit("removeBlock",{x,y,z}); });
@@ -209,5 +210,4 @@ function loop(){
   renderer.render(scene,camera);
 }
 loop();
-
 }
