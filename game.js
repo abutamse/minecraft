@@ -1,7 +1,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
 import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js";
 
-const $ = id=>document.getElementById(id);
+const $ = id => document.getElementById(id);
 
 $("startBtn").onclick = () => {
   if(!$("nameInput").value.trim()) return;
@@ -13,7 +13,7 @@ function init(playerName){
 
 /* ========= RENDERER ========= */
 const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth,innerHeight);
+renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
@@ -21,11 +21,11 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
 window.addEventListener("resize",()=>{
   camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
+  renderer.setSize(innerWidth, innerHeight);
 });
 
 /* ========= LIGHT ========= */
@@ -53,7 +53,9 @@ const player = {
   name:playerName,
   pos:new THREE.Vector3(0,30,0),
   vel:new THREE.Vector3(),
-  yaw:0,pitch:0,onGround:false
+  yaw:0,
+  pitch:0,
+  onGround:false
 };
 
 /* ========= WORLD ========= */
@@ -64,7 +66,7 @@ const CHUNK = 16;
 const chunks = new Set();
 const key=(x,y,z)=>`${x},${y},${z}`;
 
-function heightAt(x,z){ return Math.floor(6+Math.sin(x*0.15)*3+Math.cos(z*0.15)*3); }
+function heightAt(x,z){ return Math.floor(6 + Math.sin(x*0.15)*3 + Math.cos(z*0.15)*3); }
 
 function addBlock(x,y,z,type){
   const k=key(x,y,z);
@@ -90,7 +92,7 @@ function genChunk(cx,cz){
 }
 
 function groundY(x,z){
-  const xi=Math.floor(x),zi=Math.floor(z);
+  const xi=Math.floor(x), zi=Math.floor(z);
   for(let y=50;y>=-5;y--){
     if(world.has(key(xi,y,zi))) return y+1;
   }
@@ -138,11 +140,8 @@ function getHit(){ ray.setFromCamera(center,camera); return ray.intersectObjects
 /* ========= SOCKET.IO ========= */
 const socket = io("http://localhost:3000");
 const otherPlayers = new Map();
-
-// Spawn melden
 socket.emit("spawn",{name:player.name,pos:player.pos.toArray()});
 
-// Spieler Updates empfangen
 socket.on("updatePlayers", data=>{
   for(const p of data){
     if(p.id===socket.id) continue;
@@ -155,32 +154,29 @@ socket.on("updatePlayers", data=>{
     op.pos.fromArray(p.pos); op.mesh.position.copy(op.pos).addScalar(0.5);
   }
 });
-
 socket.on("removePlayer", id=>{ if(otherPlayers.has(id)){ scene.remove(otherPlayers.get(id).mesh); otherPlayers.delete(id); } });
 
-// Block Sync
 socket.on("addBlock", data=>{ addBlock(data.x,data.y,data.z,data.type); });
 socket.on("removeBlock", data=>{
   const idx=blocks.findIndex(b=>b.x===data.x&&b.y===data.y&&b.z===data.z);
   if(idx>-1){ scene.remove(blocks[idx].mesh); blocks.splice(idx,1); world.delete(key(data.x,data.y,data.z)); }
 });
 
-// Position senden
 setInterval(()=>{ socket.emit("move",{pos:player.pos.toArray()}); },50);
 
-/* ========= BUTTON FIX (Mobile-kompatibel) ========= */
+/* ========= BUTTONS MINIMAL FIX ========= */
 function bindButton(id, callback){
   const el = $(id);
-  el.style.pointerEvents = "auto";  // sehr wichtig
   el.addEventListener("pointerup", e => { e.preventDefault(); callback(); });
   el.addEventListener("touchend", e => { e.preventDefault(); callback(); });
 }
 
-bindButton("mine",()=>{ const h=getHit(); if(!h) return; const p=h.object.position; const x=Math.floor(p.x-0.5),y=Math.floor(p.y-0.5),z=Math.floor(p.z-0.5); socket.emit("removeBlock",{x,y,z}); });
-bindButton("build",()=>{ const h=getHit(); if(!h) return; const p=h.object.position,n=h.face.normal; const x=Math.floor(p.x-0.5+n.x),y=Math.floor(p.y-0.5+n.y),z=Math.floor(p.z-0.5+n.z); socket.emit("addBlock",{x,y,z,type:"dirt"}); });
-bindButton("jump",()=>{ if(player.onGround){ player.vel.y=8; player.onGround=false; } });
-bindButton("shoot",()=>{ const h=getHit(); if(!h) return; const x=Math.floor(h.object.position.x-0.5),y=Math.floor(h.object.position.y-0.5),z=Math.floor(h.object.position.z-0.5); socket.emit("removeBlock",{x,y,z}); });
-bindButton("eatMeat",()=>{ const hungerVal=parseInt($("hunger").innerText.slice(2)); $("hunger").innerText=`🍖 ${Math.min(100,hungerVal+20)}%`; });
+// Bindings ersetzen alle alten onclick
+bindButton("mine", ()=>{ const h=getHit(); if(!h) return; const p=h.object.position; const x=Math.floor(p.x-0.5), y=Math.floor(p.y-0.5), z=Math.floor(p.z-0.5); socket.emit("removeBlock",{x,y,z}); });
+bindButton("build", ()=>{ const h=getHit(); if(!h) return; const p=h.object.position, n=h.face.normal; const x=Math.floor(p.x-0.5+n.x), y=Math.floor(p.y-0.5+n.y), z=Math.floor(p.z-0.5+n.z); socket.emit("addBlock",{x,y,z,type:"dirt"}); });
+bindButton("jump", ()=>{ if(player.onGround){ player.vel.y=8; player.onGround=false; } });
+bindButton("shoot", ()=>{ const h=getHit(); if(!h) return; const x=Math.floor(h.object.position.x-0.5), y=Math.floor(h.object.position.y-0.5), z=Math.floor(h.object.position.z-0.5); socket.emit("removeBlock",{x,y,z}); });
+bindButton("eatMeat", ()=>{ const hungerVal = parseInt($("hunger").innerText.slice(2)); $("hunger").innerText = `🍖 ${Math.min(100,hungerVal+20)}%`; });
 
 /* ========= LOOP ========= */
 const clock = new THREE.Clock();
@@ -199,12 +195,12 @@ function loop(){
   player.pos.add(forward.multiplyScalar(jy*6*dt));
   player.pos.add(right.multiplyScalar(jx*6*dt));
 
-  player.vel.y-=20*dt; player.pos.y+=player.vel.y*dt;
+  player.vel.y -= 20*dt; player.pos.y += player.vel.y*dt;
   const gy = groundY(player.pos.x,player.pos.z);
-  if(player.pos.y<=gy){ player.pos.y=gy; player.vel.y=0; player.onGround=true; }
+  if(player.pos.y <= gy){ player.pos.y = gy; player.vel.y = 0; player.onGround = true; }
 
   camera.position.set(player.pos.x,player.pos.y+1.6,player.pos.z);
-  camera.lookAt(camera.position.x+Math.sin(player.yaw),camera.position.y+Math.sin(player.pitch),camera.position.z+Math.cos(player.yaw));
+  camera.lookAt(camera.position.x+Math.sin(player.yaw), camera.position.y+Math.sin(player.pitch), camera.position.z+Math.cos(player.yaw));
 
   for(const a of animals) a.mesh.position.copy(a.pos);
   renderer.render(scene,camera);
