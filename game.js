@@ -164,19 +164,12 @@ socket.on("removeBlock", data=>{
 
 setInterval(()=>{ socket.emit("move",{pos:player.pos.toArray()}); },50);
 
-/* ========= BUTTONS MINIMAL FIX ========= */
-function bindButton(id, callback){
-  const el = $(id);
-  el.addEventListener("pointerup", e => { e.preventDefault(); callback(); });
-  el.addEventListener("touchend", e => { e.preventDefault(); callback(); });
-}
-
-// Bindings ersetzen alle alten onclick
-bindButton("mine", ()=>{ const h=getHit(); if(!h) return; const p=h.object.position; const x=Math.floor(p.x-0.5), y=Math.floor(p.y-0.5), z=Math.floor(p.z-0.5); socket.emit("removeBlock",{x,y,z}); });
-bindButton("build", ()=>{ const h=getHit(); if(!h) return; const p=h.object.position, n=h.face.normal; const x=Math.floor(p.x-0.5+n.x), y=Math.floor(p.y-0.5+n.y), z=Math.floor(p.z-0.5+n.z); socket.emit("addBlock",{x,y,z,type:"dirt"}); });
-bindButton("jump", ()=>{ if(player.onGround){ player.vel.y=8; player.onGround=false; } });
-bindButton("shoot", ()=>{ const h=getHit(); if(!h) return; const x=Math.floor(h.object.position.x-0.5), y=Math.floor(h.object.position.y-0.5), z=Math.floor(h.object.position.z-0.5); socket.emit("removeBlock",{x,y,z}); });
-bindButton("eatMeat", ()=>{ const hungerVal = parseInt($("hunger").innerText.slice(2)); $("hunger").innerText = `🍖 ${Math.min(100,hungerVal+20)}%`; });
+/* ========= BUTTONS jetzt sicher für Mobile ========= */
+$("mine").onclick = () => { const h=getHit(); if(!h) return; const p=h.object.position; const x=Math.floor(p.x-0.5), y=Math.floor(p.y-0.5), z=Math.floor(p.z-0.5); socket.emit("removeBlock",{x,y,z}); };
+$("build").onclick = () => { const h=getHit(); if(!h) return; const p=h.object.position,n=h.face.normal; const x=Math.floor(p.x-0.5+n.x), y=Math.floor(p.y-0.5+n.y), z=Math.floor(p.z-0.5+n.z); socket.emit("addBlock",{x,y,z,type:"dirt"}); };
+$("jump").onclick = () => { if(player.onGround){player.vel.y=8;player.onGround=false;} };
+$("shoot").onclick = () => { const h=getHit(); if(!h) return; const x=Math.floor(h.object.position.x-0.5), y=Math.floor(h.object.position.y-0.5), z=Math.floor(h.object.position.z-0.5); socket.emit("removeBlock",{x,y,z}); };
+$("eatMeat").onclick = () => { const hungerVal=parseInt($("hunger").innerText.slice(2)); $("hunger").innerText=`🍖 ${Math.min(100,hungerVal+20)}%`; };
 
 /* ========= LOOP ========= */
 const clock = new THREE.Clock();
