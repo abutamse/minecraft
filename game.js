@@ -36,27 +36,11 @@ scene.add(sun);
 
 /* ========= TEXTURES ========= */
 const loader = new THREE.TextureLoader();
-const tex = n => {
-  const t = loader.load(n);
-  t.magFilter = t.minFilter = THREE.NearestFilter;
-  return t;
-};
-const textures = {
-  grass: tex("grass.png"),
-  dirt: tex("dirt.png"),
-  stone: tex("stone.png"),
-  sand: tex("sand.png")
-};
+const tex = n => { const t = loader.load(n); t.magFilter=t.minFilter=THREE.NearestFilter; return t; };
+const textures = { grass: tex("grass.png"), dirt: tex("dirt.png"), stone: tex("stone.png"), sand: tex("sand.png") };
 
 /* ========= PLAYER ========= */
-const player = {
-  name:playerName,
-  pos:new THREE.Vector3(0,30,0),
-  vel:new THREE.Vector3(),
-  yaw:0,
-  pitch:0,
-  onGround:false
-};
+const player = { name:playerName, pos:new THREE.Vector3(0,30,0), vel:new THREE.Vector3(), yaw:0, pitch:0, onGround:false };
 
 /* ========= WORLD ========= */
 const geo = new THREE.BoxGeometry(1,1,1);
@@ -69,8 +53,7 @@ const key=(x,y,z)=>`${x},${y},${z}`;
 function heightAt(x,z){ return Math.floor(6 + Math.sin(x*0.15)*3 + Math.cos(z*0.15)*3); }
 
 function addBlock(x,y,z,type){
-  const k=key(x,y,z);
-  if(world.has(k)) return;
+  const k=key(x,y,z); if(world.has(k)) return;
   const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:textures[type]}));
   m.position.set(x+0.5,y+0.5,z+0.5);
   scene.add(m);
@@ -79,58 +62,37 @@ function addBlock(x,y,z,type){
 }
 
 function genChunk(cx,cz){
-  const ck=`${cx},${cz}`;
-  if(chunks.has(ck)) return;
+  const ck=`${cx},${cz}`; if(chunks.has(ck)) return;
   chunks.add(ck);
   for(let x=cx;x<cx+CHUNK;x++)
   for(let z=cz;z<cz+CHUNK;z++){
     const h=heightAt(x,z);
-    for(let y=0;y<=h;y++){
-      addBlock(x,y,z,y===h?"grass":y<h-2?"stone":"dirt");
-    }
+    for(let y=0;y<=h;y++) addBlock(x,y,z,y===h?"grass":y<h-2?"stone":"dirt");
   }
 }
 
 function groundY(x,z){
   const xi=Math.floor(x), zi=Math.floor(z);
-  for(let y=50;y>=-5;y--){
-    if(world.has(key(xi,y,zi))) return y+1;
-  }
+  for(let y=50;y>=-5;y--) if(world.has(key(xi,y,zi))) return y+1;
   return -Infinity;
 }
 
 /* ========= ENTITIES ========= */
 const animals = [];
-function addAnimal(x,y,z){
-  const mat = new THREE.MeshLambertMaterial({color:0xffffff});
-  const mesh = new THREE.Mesh(geo,mat);
-  mesh.position.set(x+0.5,y+0.5,z+0.5);
-  scene.add(mesh);
-  animals.push({mesh,pos:new THREE.Vector3(x,y,z)});
-}
+function addAnimal(x,y,z){ const mesh = new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0xffffff})); mesh.position.set(x+0.5,y+0.5,z+0.5); scene.add(mesh); animals.push({mesh,pos:new THREE.Vector3(x,y,z)}); }
 addAnimal(5,10,5); addAnimal(-8,10,3);
 
 /* ========= JOYSTICK ========= */
 let jx=0,jy=0,joyStartX=0,joyStartY=0;
 $("joyBase").addEventListener("touchstart",e=>{ const t=e.touches[0]; joyStartX=t.clientX; joyStartY=t.clientY; });
-$("joyBase").addEventListener("touchmove",e=>{
-  const t=e.touches[0];
-  jx=(t.clientX-joyStartX)/40; jy=(joyStartY-t.clientY)/40;
-  jx=Math.max(-1,Math.min(1,jx)); jy=Math.max(-1,Math.min(1,jy));
-});
+$("joyBase").addEventListener("touchmove",e=>{ const t=e.touches[0]; jx=(t.clientX-joyStartX)/40; jy=(joyStartY-t.clientY)/40; jx=Math.max(-1,Math.min(1,jx)); jy=Math.max(-1,Math.min(1,jy)); });
 $("joyBase").addEventListener("touchend",()=>jx=jy=0);
 
 /* ========= LOOK ========= */
 let drag=false,lx=0,ly=0;
 renderer.domElement.addEventListener("pointerdown",e=>{ drag=true; lx=e.clientX; ly=e.clientY; });
 addEventListener("pointerup",()=>drag=false);
-addEventListener("pointermove",e=>{
-  if(!drag) return;
-  player.yaw-=(e.clientX-lx)*0.002;
-  player.pitch-=(e.clientY-ly)*0.002;
-  player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch));
-  lx=e.clientX; ly=e.clientY;
-});
+addEventListener("pointermove",e=>{ if(!drag) return; player.yaw-=(e.clientX-lx)*0.002; player.pitch-=(e.clientY-ly)*0.002; player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch)); lx=e.clientX; ly=e.clientY; });
 
 /* ========= RAYCAST ========= */
 const ray = new THREE.Raycaster();
@@ -141,42 +103,30 @@ function getHit(){ ray.setFromCamera(center,camera); return ray.intersectObjects
 const socket = io("http://localhost:3000");
 const otherPlayers = new Map();
 socket.emit("spawn",{name:player.name,pos:player.pos.toArray()});
-
-socket.on("updatePlayers", data=>{
-  for(const p of data){
-    if(p.id===socket.id) continue;
-    if(!otherPlayers.has(p.id)){
-      const mesh = new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x00ff00}));
-      scene.add(mesh);
-      otherPlayers.set(p.id,{name:p.name,mesh,pos:new THREE.Vector3()});
-    }
-    const op = otherPlayers.get(p.id);
-    op.pos.fromArray(p.pos); op.mesh.position.copy(op.pos).addScalar(0.5);
-  }
-});
+socket.on("updatePlayers", data=>{ for(const p of data){ if(p.id===socket.id) continue; if(!otherPlayers.has(p.id)){ const mesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x00ff00})); scene.add(mesh); otherPlayers.set(p.id,{name:p.name,mesh,pos:new THREE.Vector3()}); } const op=otherPlayers.get(p.id); op.pos.fromArray(p.pos); op.mesh.position.copy(op.pos).addScalar(0.5); }});
 socket.on("removePlayer", id=>{ if(otherPlayers.has(id)){ scene.remove(otherPlayers.get(id).mesh); otherPlayers.delete(id); } });
-
 socket.on("addBlock", data=>{ addBlock(data.x,data.y,data.z,data.type); });
-socket.on("removeBlock", data=>{
-  const idx=blocks.findIndex(b=>b.x===data.x&&b.y===data.y&&b.z===data.z);
-  if(idx>-1){ scene.remove(blocks[idx].mesh); blocks.splice(idx,1); world.delete(key(data.x,data.y,data.z)); }
-});
-
+socket.on("removeBlock", data=>{ const idx=blocks.findIndex(b=>b.x===data.x&&b.y===data.y&&b.z===data.z); if(idx>-1){ scene.remove(blocks[idx].mesh); blocks.splice(idx,1); world.delete(key(data.x,data.y,data.z)); }});
 setInterval(()=>{ socket.emit("move",{pos:player.pos.toArray()}); },50);
 
-/* ========= BUTTONS jetzt sicher für Mobile ========= */
-$("mine").onclick = () => { const h=getHit(); if(!h) return; const p=h.object.position; const x=Math.floor(p.x-0.5), y=Math.floor(p.y-0.5), z=Math.floor(p.z-0.5); socket.emit("removeBlock",{x,y,z}); };
-$("build").onclick = () => { const h=getHit(); if(!h) return; const p=h.object.position,n=h.face.normal; const x=Math.floor(p.x-0.5+n.x), y=Math.floor(p.y-0.5+n.y), z=Math.floor(p.z-0.5+n.z); socket.emit("addBlock",{x,y,z,type:"dirt"}); };
-$("jump").onclick = () => { if(player.onGround){player.vel.y=8;player.onGround=false;} };
-$("shoot").onclick = () => { const h=getHit(); if(!h) return; const x=Math.floor(h.object.position.x-0.5), y=Math.floor(h.object.position.y-0.5), z=Math.floor(h.object.position.z-0.5); socket.emit("removeBlock",{x,y,z}); };
-$("eatMeat").onclick = () => { const hungerVal=parseInt($("hunger").innerText.slice(2)); $("hunger").innerText=`🍖 ${Math.min(100,hungerVal+20)}%`; };
+/* ========= BUTTONS FUNKTIONIEREN JETZT 100% ========= */
+function bindButton(id, callback){
+  const el = $(id);
+  el.addEventListener("pointerdown", e=>{ e.preventDefault(); callback(); });
+  el.addEventListener("touchstart", e=>{ e.preventDefault(); callback(); });
+}
+
+bindButton("mine", ()=>{ const h=getHit(); if(!h) return; const p=h.object.position; const x=Math.floor(p.x-0.5), y=Math.floor(p.y-0.5), z=Math.floor(p.z-0.5); socket.emit("removeBlock",{x,y,z}); });
+bindButton("build", ()=>{ const h=getHit(); if(!h) return; const p=h.object.position,n=h.face.normal; const x=Math.floor(p.x-0.5+n.x), y=Math.floor(p.y-0.5+n.y), z=Math.floor(p.z-0.5); socket.emit("addBlock",{x,y,z,type:"dirt"}); });
+bindButton("jump", ()=>{ if(player.onGround){ player.vel.y=8; player.onGround=false;} });
+bindButton("shoot", ()=>{ const h=getHit(); if(!h) return; const x=Math.floor(h.object.position.x-0.5), y=Math.floor(h.object.position.y-0.5), z=Math.floor(h.object.position.z-0.5); socket.emit("removeBlock",{x,y,z}); });
+bindButton("eatMeat", ()=>{ const hungerVal = parseInt($("hunger").innerText.slice(2)); $("hunger").innerText = `🍖 ${Math.min(100,hungerVal+20)}%`; });
 
 /* ========= LOOP ========= */
 const clock = new THREE.Clock();
 function loop(){
   requestAnimationFrame(loop);
   const dt = clock.getDelta();
-
   const cx=Math.floor(player.pos.x/CHUNK)*CHUNK;
   const cz=Math.floor(player.pos.z/CHUNK)*CHUNK;
   for(let dx=-2;dx<=2;dx++)
