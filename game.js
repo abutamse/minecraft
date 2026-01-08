@@ -210,18 +210,72 @@ function init() {
 
   /* ========= LOOK CONTROLS ========= */
   let drag = false, lx = 0, ly = 0;
+  let touchId = null;
   
-  renderer.domElement.addEventListener("pointerdown", e => {
-    if (e.target === renderer.domElement) {
-      drag = true;
-      lx = e.clientX;
-      ly = e.clientY;
+  // Touch-Steuerung für Kamera (ganzer Bildschirm außer Joystick)
+  document.addEventListener("touchstart", e => {
+    // Ignoriere Touch auf Joystick und Buttons
+    if (e.target.closest('#joyBase') || e.target.closest('.control') || e.target.closest('#hotbar')) {
+      return;
+    }
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchId = touch.identifier;
+    lx = touch.clientX;
+    ly = touch.clientY;
+    drag = true;
+  }, { passive: false });
+  
+  document.addEventListener("touchmove", e => {
+    if (!drag || touchId === null) return;
+    e.preventDefault();
+    
+    // Finde den richtigen Touch
+    let touch = null;
+    for (let i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].identifier === touchId) {
+        touch = e.touches[i];
+        break;
+      }
+    }
+    if (!touch) return;
+    
+    const dx = touch.clientX - lx;
+    const dy = touch.clientY - ly;
+    
+    player.yaw -= dx * 0.003;
+    player.pitch -= dy * 0.003;
+    player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch));
+    
+    lx = touch.clientX;
+    ly = touch.clientY;
+  }, { passive: false });
+  
+  document.addEventListener("touchend", e => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === touchId) {
+        drag = false;
+        touchId = null;
+        break;
+      }
     }
   });
   
-  addEventListener("pointerup", () => drag = false);
+  // Maus-Steuerung für Desktop
+  document.addEventListener("mousedown", e => {
+    if (e.target.closest('#joyBase') || e.target.closest('.control') || e.target.closest('#hotbar')) {
+      return;
+    }
+    drag = true;
+    lx = e.clientX;
+    ly = e.clientY;
+  });
   
-  addEventListener("pointermove", e => {
+  document.addEventListener("mouseup", () => {
+    drag = false;
+  });
+  
+  document.addEventListener("mousemove", e => {
     if (!drag) return;
     player.yaw -= (e.clientX - lx) * 0.002;
     player.pitch -= (e.clientY - ly) * 0.002;
