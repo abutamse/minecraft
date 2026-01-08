@@ -4,11 +4,11 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.mod
 const $ = id => document.getElementById(id);
 
 /* ========= GAME STATE ========= */
-const gameState = {
+  const gameState = {
   health: 100,
   hunger: 100,
   coins: 0,
-  inventory: { grass: 0, dirt: 10, stone: 0, sand: 0 },
+  inventory: { grass: 0, dirt: 10, stone: 0, sand: 0, water: 0 },
   selectedBlock: "dirt"
 };
 
@@ -45,7 +45,7 @@ function updateUI() {
 }
 
 function getBlockEmoji(type) {
-  const emojis = { grass: "🟩", dirt: "🟫", stone: "⬜", sand: "🟨" };
+  const emojis = { grass: "🟩", dirt: "🟫", stone: "⬜", sand: "🟨", water: "💧" };
   return emojis[type] || "⬜";
 }
 
@@ -77,27 +77,18 @@ function init() {
   scene.add(sun);
 
   /* ========= TEXTURES ========= */
-  const createTexture = (color) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 16;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, 16, 16);
-    // Add some noise
-    for (let i = 0; i < 50; i++) {
-      ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.1})`;
-      ctx.fillRect(Math.random() * 16, Math.random() * 16, 1, 1);
-    }
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.magFilter = texture.minFilter = THREE.NearestFilter;
-    return texture;
+  const loader = new THREE.TextureLoader();
+  const tex = n => {
+    const t = loader.load(n);
+    t.magFilter = t.minFilter = THREE.NearestFilter;
+    return t;
   };
-
   const textures = {
-    grass: createTexture("#5a8f3a"),
-    dirt: createTexture("#8b5a3c"),
-    stone: createTexture("#808080"),
-    sand: createTexture("#ddc87f")
+    grass: tex("grass.png"),
+    dirt: tex("dirt.png"),
+    stone: tex("stone.png"),
+    sand: tex("sand.png"),
+    water: tex("water.png")
   };
 
   /* ========= PLAYER ========= */
@@ -117,14 +108,69 @@ function init() {
   const chunks = new Set();
   const key = (x, y, z) => `${x},${y},${z}`;
 
+  // Erweiterte Terrain-Generation mit Seen, Bergen und Feldern
+  function noise(x, z) {
+    // Mehrere Octaven für komplexeres Terrain
+    let n = 0;
+    n += Math.sin(x * 0.05) * Math.cos(z * 0.05) * 8; // Große Hügel
+    n += Math.sin(x * 0.1) * Math.cos(z * 0.1) * 4;   // Mittlere Hügel
+    n += Math.sin(x * 0.3) * Math.cos(z * 0.3) * 2;   // Kleine Details
+    return n;
+  }
+
+  function getBiome(x, z) {
+    const heat = Math.sin(x * 0.03) * Math.cos(z * 0.03);
+    const moisture = Math.sin(x * 0.04 + 100) * Math.cos(z * 0.04 + 100);
+    
+    if (heat < -0.3) return 'mountains'; // Berge
+    if (moisture > 0.4) return 'water';  // Seen
+    if (heat > 0.3) return 'desert';     // Wüste
+    return 'plains';                      // Felder
+  }
+
   function heightAt(x, z) {
-    return Math.floor(6 + Math.sin(x * 0.15) * 3 + Math.cos(z * 0.15) * 3);
+    const biome = getBiome(x, z);
+    const baseNoise = noise(x, z);
+    
+    switch(biome) {
+      case 'mountains':
+        return Math.floor(15 + baseNoise * 2 + Math.abs(Math.sin(x * 0.08) * Math.cos(z * 0.08)) * 15);
+      case 'water':
+        return 3; // Wasser-Level
+      case 'desert':
+        return Math.floor(6 + baseNoise * 0.5);
+      case 'plains':
+        return Math.floor(8 + baseNoise);
+      default:
+        return 8;
+    }
+  }
+
+  function getBlockType(x, y, z, h, biome) {
+    if (biome === 'water' && y <= 4) {
+      return y === 4 ? 'water' : y === 3 ? 'sand' : y < 3 ? 'stone' : 'dirt';
+    }
+    if (biome === 'desert') {
+      return y === h ? 'sand' : y < h - 2 ? 'stone' : 'sand';
+    }
+    if (biome === 'mountains') {
+      return y > h - 3 ? 'stone' : y === h ? 'grass' : y < h - 4 ? 'stone' : 'dirt';
+    }
+    // plains
+    return y === h ? 'grass' : y < h - 2 ? 'stone' : 'dirt';
   }
 
   function addBlock(x, y, z, type) {
     const k = key(x, y, z);
     if (world.has(k)) return;
-    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: textures[type] }));
+    
+    const mat = new THREE.MeshLambertMaterial({ 
+      map: textures[type],
+      transparent: type === 'water',
+      opacity: type === 'water' ? 0.7 : 1
+    });
+    
+    const m = new THREE.Mesh(geo, mat);
     m.position.set(x + 0.5, y + 0.5, z + 0.5);
     scene.add(m);
     blocks.push({ x, y, z, mesh: m, type });
@@ -135,14 +181,26 @@ function init() {
     const ck = `${cx},${cz}`;
     if (chunks.has(ck)) return;
     chunks.add(ck);
+    
     for (let x = cx; x < cx + CHUNK; x++)
       for (let z = cz; z < cz + CHUNK; z++) {
+        const biome = getBiome(x, z);
         const h = heightAt(x, z);
+        
         for (let y = 0; y <= h; y++) {
-          addBlock(x, y, z, y === h ? "grass" : y < h - 2 ? "stone" : "dirt");
+          const blockType = getBlockType(x, y, z, h, biome);
+          addBlock(x, y, z, blockType);
         }
-        // Add random coins
-        if (Math.random() < 0.02) {
+        
+        // Wasser füllen bis Level 4
+        if (biome === 'water' && h < 4) {
+          for (let y = h + 1; y <= 4; y++) {
+            addBlock(x, y, z, 'water');
+          }
+        }
+        
+        // Add random coins (weniger in Wasser)
+        if (Math.random() < (biome === 'water' ? 0.005 : 0.02)) {
           const coinGeo = new THREE.SphereGeometry(0.3, 8, 8);
           const coinMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
           const coin = new THREE.Mesh(coinGeo, coinMat);
@@ -374,11 +432,11 @@ function init() {
     requestAnimationFrame(loop);
     const dt = clock.getDelta();
 
-    // Generate chunks
+    // Generate chunks (unendliche Welt)
     const cx = Math.floor(player.pos.x / CHUNK) * CHUNK;
     const cz = Math.floor(player.pos.z / CHUNK) * CHUNK;
-    for (let dx = -1; dx <= 1; dx++)
-      for (let dz = -1; dz <= 1; dz++)
+    for (let dx = -2; dx <= 2; dx++)
+      for (let dz = -2; dz <= 2; dz++)
         genChunk(cx + dx * CHUNK, cz + dz * CHUNK);
 
     // Movement
