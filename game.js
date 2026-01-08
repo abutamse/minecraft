@@ -232,11 +232,20 @@ function init() {
 
   /* ========= RAYCAST ========= */
   const ray = new THREE.Raycaster();
+  ray.far = 5; // Maximale Reichweite
   const center = new THREE.Vector2(0, 0);
 
   function getHit() {
-    ray.setFromCamera(center, camera);
-    return ray.intersectObjects(blocks.map(b => b.mesh))[0];
+    // Raycast vom Kamera-Zentrum in Blickrichtung
+    const dir = new THREE.Vector3(
+      Math.sin(player.yaw) * Math.cos(player.pitch),
+      Math.sin(player.pitch),
+      Math.cos(player.yaw) * Math.cos(player.pitch)
+    ).normalize();
+    
+    ray.set(camera.position, dir);
+    const hits = ray.intersectObjects(blocks.map(b => b.mesh));
+    return hits.length > 0 ? hits[0] : null;
   }
 
   /* ========= BUTTONS ========= */
