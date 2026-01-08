@@ -50,6 +50,17 @@ canvas{
   font-size:16px;
 }
 
+/* HOTBAR */
+#hotbar{
+  position:fixed;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:6px;
+  z-index:20;
+}
+
 /* CROSSHAIR */
 #cross{
   position:fixed;
@@ -70,9 +81,8 @@ canvas{
   background:rgba(0,0,0,.6);
   color:white;
   border-radius:8px;
-  z-index:40;
+  z-index:20;
   font-size:16px;
-  border:none;
 }
 #jump{bottom:260px;}
 #mine{bottom:200px;}
@@ -89,7 +99,7 @@ canvas{
   height:120px;
   border-radius:50%;
   background:rgba(255,255,255,0.1);
-  z-index:40;
+  z-index:20;
 }
 #joyStick{
   position:absolute;
@@ -113,15 +123,17 @@ canvas{
 <div id="ui">
   <div id="health">❤️ 100</div>
   <div id="hunger">🍖 100%</div>
+  <div id="coins">🪙 0</div>
 </div>
 
+<div id="hotbar"></div>
 <div id="cross"></div>
 
-<button id="jump" class="control">JUMP</button>
-<button id="mine" class="control">MINE</button>
-<button id="build" class="control">BUILD</button>
-<button id="shoot" class="control">SHOOT</button>
-<button id="eatMeat" class="control">EAT</button>
+<div id="jump" class="control">JUMP</div>
+<div id="mine" class="control">MINE</div>
+<div id="build" class="control">BUILD</div>
+<div id="shoot" class="control">SHOOT</div>
+<div id="eatMeat" class="control">EAT</div>
 
 <div id="joyBase"><div id="joyStick"></div></div>
 
