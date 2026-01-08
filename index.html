@@ -13,7 +13,7 @@ html,body{
   height:100%;
   overflow:hidden;
   background:black;
-  touch-action:none;
+  touch-action:none; /* wichtig für Joystick */
 }
 canvas{
   position:fixed;
@@ -84,7 +84,7 @@ canvas{
   z-index:30;
 }
 
-/* BUTTONS RIGHT */
+/* BUTTONS */
 .control{
   position:fixed;
   right:15px;
@@ -99,8 +99,9 @@ canvas{
   cursor:pointer;
   user-select:none;
   -webkit-user-select:none;
-  pointer-events:auto; /* Mobile Fix */
-  -webkit-tap-highlight-color: transparent; /* Mobile Fix */
+  pointer-events:auto; 
+  -webkit-tap-highlight-color: transparent; 
+  touch-action: manipulation; /* wichtig für Mobile */
 }
 #jump{bottom:260px;}
 #mine{bottom:200px;}
@@ -108,7 +109,7 @@ canvas{
 #shoot{bottom:80px;}
 #eatMeat{bottom:20px;}
 
-/* JOYSTICK LEFT */
+/* JOYSTICK */
 #joyBase{
   position:fixed;
   left:20px;
@@ -147,7 +148,7 @@ canvas{
 <div id="hotbar"></div>
 <div id="cross"></div>
 
-<!-- Buttons jetzt echte Buttons -->
+<!-- echte Buttons -->
 <button id="jump" class="control">JUMP</button>
 <button id="mine" class="control">MINE</button>
 <button id="build" class="control">BUILD</button>
