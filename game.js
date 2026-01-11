@@ -303,11 +303,14 @@ function init() {
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
     sprite.position.set(x + 0.5, y + 1, z + 0.5);
     sprite.scale.set(1.5, 1.5, 1);
-    sprite.userData.isAnimal = true;
-    sprite.userData.health = 50;
-    sprite.userData.emoji = emoji;
-    sprite.userData.moveDir = Math.random() * Math.PI * 2;
-    sprite.userData.moveTimer = 0;
+    sprite.userData = {
+      isAnimal: true,
+      health: 100,
+      maxHealth: 100,
+      emoji: emoji,
+      moveDir: Math.random() * Math.PI * 2,
+      moveTimer: 0
+    };
     scene.add(sprite);
     animals.push(sprite);
   }
@@ -469,11 +472,11 @@ function init() {
   const ray = new THREE.Raycaster();
 
   function getDirection() {
-    return new THREE.Vector3(
-      Math.sin(player.yaw) * Math.cos(player.pitch),
-      Math.sin(player.pitch),
-      Math.cos(player.yaw) * Math.cos(player.pitch)
-    ).normalize();
+    // EXAKTE Richtung vom Crosshair (gelber Punkt in der Mitte)
+    const vector = new THREE.Vector3(0, 0, -1);
+    vector.unproject(camera);
+    vector.sub(camera.position).normalize();
+    return vector;
   }
 
   function getHit() {
@@ -571,16 +574,23 @@ function init() {
     if (w.projectile) {
       shootProjectile();
     } else {
+      // Nahkampf
       const h = getAnimalHit();
       if (h && h.distance <= w.range) {
         const an = h.object;
         an.userData.health -= w.damage;
+        console.log(`Tier getroffen! Health: ${an.userData.health}/${an.userData.maxHealth}`);
+        
         if (an.userData.health <= 0) {
-          scene.remove(an);
-          animals.splice(animals.indexOf(an), 1);
-          gameState.coins += 5;
-          gameState.meat += 1;
-          updateUI();
+          const idx = animals.indexOf(an);
+          if (idx > -1) {
+            scene.remove(an);
+            animals.splice(idx, 1);
+            gameState.coins += 5;
+            gameState.meat += 1;
+            updateUI();
+            console.log('Tier gestorben! +5 Münzen, +1 Fleisch');
+          }
         }
       }
     }
@@ -633,8 +643,17 @@ function init() {
     const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
 
-    player.pos.add(forward.multiplyScalar(jy * 6 * dt));
-    player.pos.add(right.multiplyScalar(jx * 6 * dt));
+    const nextX = player.pos.x + forward.x * jy * 6 * dt + right.x * jx * 6 * dt;
+    const nextZ = player.pos.z + forward.z * jy * 6 * dt + right.z * jx * 6 * dt;
+    
+    // Kollisionserkennung horizontal
+    const blockAhead = world.has(key(Math.floor(nextX), Math.floor(player.pos.y), Math.floor(nextZ)));
+    const blockAheadAbove = world.has(key(Math.floor(nextX), Math.floor(player.pos.y + 1), Math.floor(nextZ)));
+    
+    if (!blockAhead && !blockAheadAbove) {
+      player.pos.x = nextX;
+      player.pos.z = nextZ;
+    }
 
     player.vel.y -= 20 * dt;
     player.pos.y += player.vel.y * dt;
@@ -689,14 +708,21 @@ function init() {
         obj.userData.life -= dt;
         
         animals.forEach(animal => {
-          if (obj.position.distanceTo(animal.position) < 1) {
+          const dist = obj.position.distanceTo(animal.position);
+          if (dist < 1.5) {
             animal.userData.health -= obj.userData.damage;
+            console.log(`Projektil trifft Tier! Health: ${animal.userData.health}/${animal.userData.maxHealth}`);
+            
             if (animal.userData.health <= 0) {
-              scene.remove(animal);
-              animals.splice(animals.indexOf(animal), 1);
-              gameState.coins += 5;
-              gameState.meat += 1;
-              updateUI();
+              const idx = animals.indexOf(animal);
+              if (idx > -1) {
+                scene.remove(animal);
+                animals.splice(idx, 1);
+                gameState.coins += 5;
+                gameState.meat += 1;
+                updateUI();
+                console.log('Tier durch Projektil getötet!');
+              }
             }
             scene.remove(obj);
           }
