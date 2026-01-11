@@ -5,7 +5,7 @@ const $ = id => document.getElementById(id);
 const gameState = {
   health: 100,
   hunger: 100,
-  coins: 0,
+  coins: 100,
   meat: 0,
   inventory: { grass: 0, dirt: 10, stone: 0, sand: 0, wood: 0, leaves: 0 },
   selectedBlock: "dirt",
@@ -16,18 +16,18 @@ const gameState = {
 };
 
 const WEAPONS = {
-  fist: { name: "Faust", damage: 20, cost: 0, emoji: "👊", range: 4, projectile: false },
-  knife: { name: "Messer", damage: 30, cost: 10, emoji: "🔪", range: 4, projectile: false },
-  sword: { name: "Schwert", damage: 50, cost: 50, emoji: "⚔️", range: 5, projectile: false },
-  axe: { name: "Axt", damage: 60, cost: 75, emoji: "🪓", range: 5, projectile: false },
-  spear: { name: "Speer", damage: 40, cost: 60, emoji: "🔱", range: 8, projectile: true, speed: 25, color: 0x8b4513 },
-  bow: { name: "Bogen", damage: 70, cost: 100, emoji: "🏹", range: 50, projectile: true, speed: 30, color: 0x8b4513 },
-  pistol: { name: "Pistole", damage: 80, cost: 200, emoji: "🔫", range: 80, projectile: true, speed: 50, color: 0xffff00 },
-  rifle: { name: "Gewehr", damage: 100, cost: 400, emoji: "🔫", range: 100, projectile: true, speed: 60, color: 0xff8800 },
-  shotgun: { name: "Schrotflinte", damage: 120, cost: 500, emoji: "💥", range: 30, projectile: true, speed: 40, color: 0xff0000, spread: 3 },
-  sniper: { name: "Scharfschütze", damage: 150, cost: 800, emoji: "🎯", range: 150, projectile: true, speed: 80, color: 0x00ffff },
-  rpg: { name: "RPG", damage: 300, cost: 1500, emoji: "🚀", range: 100, projectile: true, speed: 35, color: 0xff0000, explosive: true },
-  minigun: { name: "Minigun", damage: 80, cost: 1200, emoji: "⚡", range: 70, projectile: true, speed: 70, color: 0xffaa00 }
+  fist: { name: "Faust", damage: 50, cost: 0, emoji: "👊", range: 5, projectile: false },
+  knife: { name: "Messer", damage: 100, cost: 10, emoji: "🔪", range: 5, projectile: false },
+  sword: { name: "Schwert", damage: 150, cost: 50, emoji: "⚔️", range: 6, projectile: false },
+  axe: { name: "Axt", damage: 160, cost: 75, emoji: "🪓", range: 6, projectile: false },
+  spear: { name: "Speer", damage: 120, cost: 60, emoji: "🔱", range: 8, projectile: true, speed: 25, color: 0x8b4513 },
+  bow: { name: "Bogen", damage: 200, cost: 100, emoji: "🏹", range: 50, projectile: true, speed: 30, color: 0x8b4513 },
+  pistol: { name: "Pistole", damage: 250, cost: 200, emoji: "🔫", range: 80, projectile: true, speed: 50, color: 0xffff00 },
+  rifle: { name: "Gewehr", damage: 300, cost: 400, emoji: "🔫", range: 100, projectile: true, speed: 60, color: 0xff8800 },
+  shotgun: { name: "Schrotflinte", damage: 350, cost: 500, emoji: "💥", range: 30, projectile: true, speed: 40, color: 0xff0000, spread: 3 },
+  sniper: { name: "Scharfschütze", damage: 450, cost: 800, emoji: "🎯", range: 150, projectile: true, speed: 80, color: 0x00ffff },
+  rpg: { name: "RPG", damage: 600, cost: 1500, emoji: "🚀", range: 100, projectile: true, speed: 35, color: 0xff0000, explosive: true },
+  minigun: { name: "Minigun", damage: 280, cost: 1200, emoji: "⚡", range: 70, projectile: true, speed: 70, color: 0xffaa00 }
 };
 
 const SKINS = [
@@ -40,99 +40,100 @@ const SKINS = [
 const ANIMALS = ['🐷', '🐮', '🐔', '🐑'];
 
 function showSkinSelector() {
-  const selector = document.createElement('div');
-  selector.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;';
-  selector.innerHTML = `
-    <h2 style="color:white;margin-bottom:20px;font-size:2em;">Wähle deinen Skin</h2>
-    <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;padding:20px;">
-      ${SKINS.map((skin, i) => `
-        <div class="skinOption" data-index="${i}" style="cursor:pointer;padding:15px;background:rgba(255,255,255,0.1);border:3px solid white;border-radius:10px;text-align:center;">
-          <img src="${skin.url}" style="width:100px;height:100px;image-rendering:pixelated;">
-          <p style="color:white;margin-top:10px;font-size:1.2em;">${skin.name}</p>
-        </div>
-      `).join('')}
-    </div>
-  `;
-  document.body.appendChild(selector);
-  document.querySelectorAll('.skinOption').forEach(opt => {
-    opt.onclick = () => {
-      gameState.skin = SKINS[opt.dataset.index].url;
-      selector.remove();
+  const s = document.createElement('div');
+  s.id = 'skinSelector';
+  s.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;';
+  s.innerHTML = `<h2 style="color:white;font-size:2em;margin:20px;">Wähle deinen Skin</h2>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;">${SKINS.map((sk, i) => 
+    `<div class="skin-opt" data-i="${i}" style="cursor:pointer;padding:15px;background:rgba(255,255,255,0.1);border:3px solid white;border-radius:10px;text-align:center;">
+      <img src="${sk.url}" style="width:100px;height:100px;image-rendering:pixelated;">
+      <p style="color:white;margin-top:10px;font-size:1.2em;">${sk.name}</p>
+    </div>`).join('')}</div>`;
+  document.body.appendChild(s);
+  
+  document.querySelectorAll('.skin-opt').forEach(el => {
+    el.onclick = () => {
+      gameState.skin = SKINS[el.dataset.i].url;
+      s.remove();
       $("login").style.display = "flex";
     };
   });
 }
 
 function showShop() {
-  const shop = document.createElement('div');
-  shop.id = 'shop';
-  shop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:150;overflow-y:scroll;padding:20px;';
-  shop.innerHTML = `
+  const sh = document.createElement('div');
+  sh.id = 'shopModal';
+  sh.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:150;overflow-y:scroll;padding:20px;padding-bottom:100px;';
+  sh.innerHTML = `
     <div style="max-width:1200px;margin:0 auto;">
-      <h2 style="color:gold;text-align:center;font-size:2em;margin-bottom:10px;">🏪 SHOP</h2>
-      <p style="color:white;text-align:center;font-size:1.3em;margin-bottom:20px;">Deine Münzen: 🪙 ${gameState.coins}</p>
-      <button id="closeShop" style="position:fixed;top:20px;right:20px;padding:10px 20px;font-size:1.5em;background:red;color:white;border:none;border-radius:10px;cursor:pointer;z-index:151;">❌</button>
+      <h2 style="color:gold;text-align:center;font-size:2.5em;margin-bottom:10px;">🏪 SHOP</h2>
+      <p style="color:white;text-align:center;font-size:1.5em;margin-bottom:30px;">Deine Münzen: 🪙 ${gameState.coins}</p>
+      <button class="close-shop-btn" style="position:fixed;top:20px;right:20px;padding:15px 30px;font-size:1.8em;background:red;color:white;border:none;border-radius:12px;cursor:pointer;z-index:151;font-weight:bold;">❌ SCHLIEẞEN</button>
       
-      <h3 style="color:white;margin:20px 0;font-size:1.5em;">⚔️ Waffen</h3>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:30px;">
-        ${Object.entries(WEAPONS).map(([key, w]) => {
-          const owned = gameState.ownedWeapons.includes(key);
-          const equipped = gameState.weapon === key;
-          return `
-          <div class="shopItem" data-weapon="${key}" style="padding:15px;background:${equipped ? 'rgba(0,255,0,0.3)' : owned ? 'rgba(100,100,255,0.2)' : 'rgba(255,255,255,0.1)'};border:2px solid ${equipped ? 'lime' : owned ? 'cyan' : 'white'};border-radius:10px;text-align:center;cursor:pointer;">
-            <div style="font-size:3em;">${w.emoji}</div>
-            <p style="color:white;font-size:1.1em;margin:5px 0;">${w.name}</p>
-            <p style="color:yellow;">💥 ${w.damage} Schaden</p>
-            <p style="color:cyan;">📏 ${w.range}m</p>
-            <p style="color:gold;font-size:1.2em;">${equipped ? '✅ Ausgerüstet' : owned ? '👆 Ausrüsten' : w.cost === 0 ? 'Gratis' : `🪙 ${w.cost}`}</p>
+      <h3 style="color:white;margin:30px 0 20px 0;font-size:1.8em;border-bottom:3px solid gold;padding-bottom:10px;">⚔️ WAFFEN</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;margin-bottom:50px;">
+        ${Object.entries(WEAPONS).map(([k, w]) => {
+          const own = gameState.ownedWeapons.includes(k);
+          const eq = gameState.weapon === k;
+          return `<div class="weapon-card" data-key="${k}" style="padding:20px;background:${eq?'linear-gradient(135deg,rgba(0,255,0,0.4),rgba(0,200,0,0.3))':own?'linear-gradient(135deg,rgba(100,100,255,0.3),rgba(50,50,200,0.2))':'linear-gradient(135deg,rgba(255,255,255,0.15),rgba(200,200,200,0.1))'};border:3px solid ${eq?'#00ff00':own?'#6666ff':'white'};border-radius:15px;text-align:center;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.5)';" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none';">
+            <div style="font-size:4em;margin-bottom:10px;">${w.emoji}</div>
+            <p style="color:white;font-size:1.3em;font-weight:bold;margin:10px 0;">${w.name}</p>
+            <p style="color:#ffeb3b;font-size:1.1em;margin:5px 0;">💥 ${w.damage} Schaden</p>
+            <p style="color:#00bcd4;font-size:1.1em;margin:5px 0;">📏 ${w.range}m Reichweite</p>
+            <p style="color:${w.cost<=gameState.coins||own?'#ffd700':'#ff5555'};font-size:1.4em;margin-top:15px;font-weight:bold;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;">
+              ${eq?'✅ AUSGERÜSTET':own?'👆 AUSRÜSTEN':w.cost===0?'🎁 GRATIS':`🪙 ${w.cost}`}
+            </p>
           </div>`;
         }).join('')}
       </div>
       
-      <h3 style="color:white;margin:20px 0;font-size:1.5em;">📦 Blöcke kaufen</h3>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;">
-        ${['grass', 'dirt', 'stone', 'sand', 'wood', 'leaves'].map(block => `
-          <div class="buyBlock" data-block="${block}" style="padding:15px;background:rgba(255,255,255,0.1);border:2px solid white;border-radius:10px;text-align:center;cursor:pointer;">
-            <div style="font-size:2em;">${{grass:"🟩",dirt:"🟫",stone:"⬜",sand:"🟨",wood:"🪵",leaves:"🍃"}[block]}</div>
-            <p style="color:white;margin:5px 0;">10x ${block}</p>
-            <p style="color:gold;font-size:1.2em;">🪙 5</p>
-          </div>
-        `).join('')}
+      <h3 style="color:white;margin:30px 0 20px 0;font-size:1.8em;border-bottom:3px solid gold;padding-bottom:10px;">📦 BLÖCKE KAUFEN</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:20px;margin-bottom:50px;">
+        ${['grass','dirt','stone','sand','wood','leaves'].map(b => 
+          `<div class="block-card" data-block="${b}" style="padding:20px;background:linear-gradient(135deg,rgba(255,255,255,0.15),rgba(200,200,200,0.1));border:3px solid white;border-radius:15px;text-align:center;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">
+            <div style="font-size:3.5em;margin-bottom:10px;">${{grass:"🟩",dirt:"🟫",stone:"⬜",sand:"🟨",wood:"🪵",leaves:"🍃"}[b]}</div>
+            <p style="color:white;font-size:1.2em;margin:10px 0;font-weight:bold;">10x ${b.toUpperCase()}</p>
+            <p style="color:#ffd700;font-size:1.5em;margin-top:10px;font-weight:bold;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px;">🪙 5</p>
+          </div>`
+        ).join('')}
       </div>
     </div>
   `;
-  document.body.appendChild(shop);
+  document.body.appendChild(sh);
   
-  $('closeShop').onclick = () => shop.remove();
+  document.querySelector('.close-shop-btn').onclick = () => sh.remove();
   
-  document.querySelectorAll('.shopItem').forEach(el => {
+  document.querySelectorAll('.weapon-card').forEach(el => {
     el.onclick = () => {
-      const key = el.dataset.weapon;
-      const weapon = WEAPONS[key];
-      const owned = gameState.ownedWeapons.includes(key);
-      if (owned) {
-        gameState.weapon = key;
+      const k = el.dataset.key;
+      const w = WEAPONS[k];
+      const own = gameState.ownedWeapons.includes(k);
+      
+      if (own) {
+        gameState.weapon = k;
         updateUI();
-        shop.remove();
+        sh.remove();
         showShop();
-      } else if (weapon.cost <= gameState.coins) {
-        gameState.coins -= weapon.cost;
-        gameState.ownedWeapons.push(key);
-        gameState.weapon = key;
+      } else if (w.cost <= gameState.coins) {
+        gameState.coins -= w.cost;
+        gameState.ownedWeapons.push(k);
+        gameState.weapon = k;
         updateUI();
-        shop.remove();
+        sh.remove();
         showShop();
       }
     };
   });
   
-  document.querySelectorAll('.buyBlock').forEach(el => {
+  document.querySelectorAll('.block-card').forEach(el => {
     el.onclick = () => {
-      const block = el.dataset.block;
+      const b = el.dataset.block;
       if (gameState.coins >= 5) {
         gameState.coins -= 5;
-        gameState.inventory[block] += 10;
+        gameState.inventory[b] += 10;
         updateUI();
+        sh.remove();
+        showShop();
       }
     };
   });
@@ -345,7 +346,7 @@ function init() {
             addBlock(x, y, z, 'water');
           }
         }
-        if (Math.random() < 0.02 && biome !== 'water') {
+        if (Math.random() < 0.03 && biome !== 'water') {
           spawnAnimal(x, h, z);
         }
       }
@@ -360,6 +361,9 @@ function init() {
     return -Infinity;
   }
 
+  /* ENDE TEIL 1 - Schreib "continue" für TEIL 2 */
+/* TEIL 2 - CONTROLS & GAME LOOP */
+
   let jx = 0, jy = 0;
   const joyBase = $("joyBase");
   const joyStick = $("joyStick");
@@ -369,23 +373,21 @@ function init() {
     e.preventDefault();
     joyActive = true;
     const rect = joyBase.getBoundingClientRect();
-    const startX = rect.left + rect.width / 2;
-    const startY = rect.top + rect.height / 2;
-    joyBase.dataset.startX = startX;
-    joyBase.dataset.startY = startY;
+    joyBase.dataset.sx = rect.left + rect.width / 2;
+    joyBase.dataset.sy = rect.top + rect.height / 2;
   });
 
   document.addEventListener("touchmove", e => {
     if (!joyActive) return;
     e.preventDefault();
     const t = e.touches[0];
-    const dx = t.clientX - parseFloat(joyBase.dataset.startX);
-    const dy = parseFloat(joyBase.dataset.startY) - t.clientY;
+    const dx = t.clientX - parseFloat(joyBase.dataset.sx);
+    const dy = parseFloat(joyBase.dataset.sy) - t.clientY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const maxDist = 40;
     if (dist > maxDist) {
-      jx = (dx / dist) * (maxDist / 40);
-      jy = (dy / dist) * (maxDist / 40);
+      jx = (dx / dist);
+      jy = (dy / dist);
       joyStick.style.left = `${40 + (dx / dist) * maxDist}px`;
       joyStick.style.top = `${40 - (dy / dist) * maxDist}px`;
     } else {
@@ -396,9 +398,8 @@ function init() {
     }
   }, { passive: false });
 
-  document.addEventListener("touchend", e => {
+  document.addEventListener("touchend", () => {
     if (joyActive) {
-      e.preventDefault();
       joyActive = false;
       jx = jy = 0;
       joyStick.style.left = "40px";
@@ -406,11 +407,11 @@ function init() {
     }
   });
 
-  let drag = false, lx = 0, ly = 0;
-  let touchId = null;
+  let drag = false, lx = 0, ly = 0, touchId = null;
   
   document.addEventListener("touchstart", e => {
-    if (e.target.closest('#joyBase') || e.target.closest('.control') || e.target.closest('#hotbar') || e.target.closest('#shop')) return;
+    const target = e.target;
+    if (target.closest('#joyBase') || target.closest('.control') || target.closest('#hotbar') || target.closest('#shopModal')) return;
     e.preventDefault();
     const touch = e.touches[0];
     touchId = touch.identifier;
@@ -450,15 +451,13 @@ function init() {
   });
   
   document.addEventListener("mousedown", e => {
-    if (e.target.closest('#joyBase') || e.target.closest('.control') || e.target.closest('#hotbar') || e.target.closest('#shop')) return;
+    if (e.target.closest('#joyBase') || e.target.closest('.control') || e.target.closest('#hotbar') || e.target.closest('#shopModal')) return;
     drag = true;
     lx = e.clientX;
     ly = e.clientY;
   });
   
-  document.addEventListener("mouseup", () => {
-    drag = false;
-  });
+  document.addEventListener("mouseup", () => drag = false);
   
   document.addEventListener("mousemove", e => {
     if (!drag) return;
@@ -471,16 +470,12 @@ function init() {
 
   const ray = new THREE.Raycaster();
 
-  function getDirection() {
-    // EXAKTE Richtung vom Crosshair (gelber Punkt in der Mitte)
-    const vector = new THREE.Vector3(0, 0, -1);
-    vector.unproject(camera);
-    vector.sub(camera.position).normalize();
-    return vector;
-  }
-
   function getHit() {
-    const dir = getDirection();
+    // EXAKT auf gelben Punkt zielen
+    camera.updateMatrixWorld();
+    const vec = new THREE.Vector3(0, 0, -1);
+    vec.unproject(camera);
+    const dir = vec.sub(camera.position).normalize();
     ray.set(camera.position, dir);
     ray.far = 10;
     const hits = ray.intersectObjects(blocks.map(b => b.mesh));
@@ -488,7 +483,10 @@ function init() {
   }
 
   function getAnimalHit() {
-    const dir = getDirection();
+    camera.updateMatrixWorld();
+    const vec = new THREE.Vector3(0, 0, -1);
+    vec.unproject(camera);
+    const dir = vec.sub(camera.position).normalize();
     ray.set(camera.position, dir);
     ray.far = WEAPONS[gameState.weapon].range;
     const hits = ray.intersectObjects(animals);
@@ -498,33 +496,43 @@ function init() {
   function shootProjectile() {
     const w = WEAPONS[gameState.weapon];
     if (!w.projectile) return;
+    
+    camera.updateMatrixWorld();
+    const vec = new THREE.Vector3(0, 0, -1);
+    vec.unproject(camera);
+    const dir = vec.sub(camera.position).normalize();
+    
     const pGeo = w.emoji === '🏹' ? new THREE.ConeGeometry(0.15, 0.6, 8) : new THREE.SphereGeometry(0.2);
     const pMat = new THREE.MeshBasicMaterial({ color: w.color });
-    const proj = new THREE.Mesh(pGeo, pMat);
-    proj.position.copy(camera.position);
-    const dir = getDirection();
     
     if (w.spread) {
       for (let i = 0; i < w.spread; i++) {
-        const sp = new THREE.Vector3(
+        const proj = new THREE.Mesh(pGeo, pMat);
+        proj.position.copy(camera.position);
+        const spread = new THREE.Vector3(
           (Math.random() - 0.5) * 0.3,
           (Math.random() - 0.5) * 0.3,
           (Math.random() - 0.5) * 0.3
         );
-        const sDir = dir.clone().add(sp).normalize();
-        const sProj = proj.clone();
-        sProj.userData.velocity = sDir.multiplyScalar(w.speed);
-        sProj.userData.damage = w.damage;
-        sProj.userData.life = 5;
-        sProj.userData.isProjectile = true;
-        scene.add(sProj);
+        const sDir = dir.clone().add(spread).normalize();
+        proj.userData = {
+          velocity: sDir.multiplyScalar(w.speed),
+          damage: w.damage,
+          life: 5,
+          isProjectile: true
+        };
+        scene.add(proj);
       }
     } else {
-      proj.userData.velocity = dir.multiplyScalar(w.speed);
-      proj.userData.damage = w.damage;
-      proj.userData.life = 5;
-      proj.userData.isProjectile = true;
-      proj.userData.explosive = w.explosive;
+      const proj = new THREE.Mesh(pGeo, pMat);
+      proj.position.copy(camera.position);
+      proj.userData = {
+        velocity: dir.multiplyScalar(w.speed),
+        damage: w.damage,
+        life: 5,
+        isProjectile: true,
+        explosive: w.explosive
+      };
       scene.add(proj);
     }
   }
@@ -536,10 +544,8 @@ function init() {
     const x = Math.floor(p.x - 0.5), y = Math.floor(p.y - 0.5), z = Math.floor(p.z - 0.5);
     const i = blocks.findIndex(b => b.x === x && b.y === y && b.z === z);
     if (i > -1) {
-      const blockType = blocks[i].type;
-      if (blockType !== 'water') {
-        gameState.inventory[blockType]++;
-      }
+      const bt = blocks[i].type;
+      if (bt !== 'water') gameState.inventory[bt]++;
       scene.remove(blocks[i].mesh);
       blocks.splice(i, 1);
       world.delete(key(x, y, z));
@@ -574,12 +580,11 @@ function init() {
     if (w.projectile) {
       shootProjectile();
     } else {
-      // Nahkampf
       const h = getAnimalHit();
-      if (h && h.distance <= w.range) {
+      if (h) {
         const an = h.object;
         an.userData.health -= w.damage;
-        console.log(`Tier getroffen! Health: ${an.userData.health}/${an.userData.maxHealth}`);
+        console.log(`Tier getroffen! ${an.userData.health}/${an.userData.maxHealth} HP`);
         
         if (an.userData.health <= 0) {
           const idx = animals.indexOf(an);
@@ -589,7 +594,7 @@ function init() {
             gameState.coins += 5;
             gameState.meat += 1;
             updateUI();
-            console.log('Tier gestorben! +5 Münzen, +1 Fleisch');
+            console.log('Tier tot! +5🪙 +1🥩');
           }
         }
       }
@@ -606,13 +611,12 @@ function init() {
 
   const shopBtn = document.createElement('div');
   shopBtn.className = 'control';
-  shopBtn.style.cssText = 'top:80px;right:15px;bottom:auto;';
+  shopBtn.style.cssText = 'top:80px;right:15px;bottom:auto;font-size:1.5em;';
   shopBtn.textContent = '🏪';
   shopBtn.onclick = showShop;
   document.body.appendChild(shopBtn);
 
-  let hungerTimer = 0;
-  let damageTimer = 0;
+  let hungerTimer = 0, damageTimer = 0;
 
   function respawn() {
     player.pos.set(0, 30, 0);
@@ -621,11 +625,11 @@ function init() {
     gameState.hunger = Math.max(0, gameState.hunger - 50);
     updateUI();
     
-    const deathMsg = document.createElement('div');
-    deathMsg.style.cssText = 'position:fixed;inset:0;background:rgba(255,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:180;font-size:3em;color:white;font-weight:bold;';
-    deathMsg.textContent = '💀 Du bist gestorben!';
-    document.body.appendChild(deathMsg);
-    setTimeout(() => deathMsg.remove(), 2000);
+    const dm = document.createElement('div');
+    dm.style.cssText = 'position:fixed;inset:0;background:rgba(255,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:180;font-size:3em;color:white;font-weight:bold;';
+    dm.textContent = '💀 Du bist gestorben!';
+    document.body.appendChild(dm);
+    setTimeout(() => dm.remove(), 2000);
   }
 
   const clock = new THREE.Clock();
@@ -643,14 +647,13 @@ function init() {
     const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
 
-    const nextX = player.pos.x + forward.x * jy * 6 * dt + right.x * jx * 6 * dt;
-    const nextZ = player.pos.z + forward.z * jy * 6 * dt + right.z * jx * 6 * dt;
+    const nextX = player.pos.x + (forward.x * jy + right.x * jx) * 6 * dt;
+    const nextZ = player.pos.z + (forward.z * jy + right.z * jx) * 6 * dt;
     
-    // Kollisionserkennung horizontal
     const blockAhead = world.has(key(Math.floor(nextX), Math.floor(player.pos.y), Math.floor(nextZ)));
-    const blockAheadAbove = world.has(key(Math.floor(nextX), Math.floor(player.pos.y + 1), Math.floor(nextZ)));
+    const blockAbove = world.has(key(Math.floor(nextX), Math.floor(player.pos.y + 1), Math.floor(nextZ)));
     
-    if (!blockAhead && !blockAheadAbove) {
+    if (!blockAhead && !blockAbove) {
       player.pos.x = nextX;
       player.pos.z = nextZ;
     }
@@ -667,9 +670,7 @@ function init() {
       player.onGround = false;
     }
 
-    if (player.pos.y < -10) {
-      respawn();
-    }
+    if (player.pos.y < -10) respawn();
 
     hungerTimer += dt;
     if (hungerTimer >= 10) {
@@ -684,22 +685,20 @@ function init() {
         damageTimer = 0;
         gameState.health = Math.max(0, gameState.health - 1);
         updateUI();
-        if (gameState.health === 0) {
-          respawn();
-        }
+        if (gameState.health === 0) respawn();
       }
     }
 
-    animals.forEach(animal => {
-      animal.userData.moveTimer += dt;
-      if (animal.userData.moveTimer > 2) {
-        animal.userData.moveDir = Math.random() * Math.PI * 2;
-        animal.userData.moveTimer = 0;
+    animals.forEach(a => {
+      a.userData.moveTimer += dt;
+      if (a.userData.moveTimer > 2) {
+        a.userData.moveDir = Math.random() * Math.PI * 2;
+        a.userData.moveTimer = 0;
       }
-      animal.position.x += Math.sin(animal.userData.moveDir) * 0.5 * dt;
-      animal.position.z += Math.cos(animal.userData.moveDir) * 0.5 * dt;
-      const ay = groundY(animal.position.x, animal.position.z);
-      if (ay > -Infinity) animal.position.y = ay + 1;
+      a.position.x += Math.sin(a.userData.moveDir) * 0.5 * dt;
+      a.position.z += Math.cos(a.userData.moveDir) * 0.5 * dt;
+      const ay = groundY(a.position.x, a.position.z);
+      if (ay > -Infinity) a.position.y = ay + 1;
     });
 
     scene.children.forEach(obj => {
@@ -707,21 +706,19 @@ function init() {
         obj.position.add(obj.userData.velocity.clone().multiplyScalar(dt));
         obj.userData.life -= dt;
         
-        animals.forEach(animal => {
-          const dist = obj.position.distanceTo(animal.position);
-          if (dist < 1.5) {
-            animal.userData.health -= obj.userData.damage;
-            console.log(`Projektil trifft Tier! Health: ${animal.userData.health}/${animal.userData.maxHealth}`);
-            
-            if (animal.userData.health <= 0) {
-              const idx = animals.indexOf(animal);
+        animals.forEach(a => {
+          if (obj.position.distanceTo(a.position) < 2) {
+            a.userData.health -= obj.userData.damage;
+            console.log(`Projektil trifft! ${a.userData.health}/${a.userData.maxHealth} HP`);
+            if (a.userData.health <= 0) {
+              const idx = animals.indexOf(a);
               if (idx > -1) {
-                scene.remove(animal);
+                scene.remove(a);
                 animals.splice(idx, 1);
                 gameState.coins += 5;
                 gameState.meat += 1;
                 updateUI();
-                console.log('Tier durch Projektil getötet!');
+                console.log('Tier durch Projektil tot!');
               }
             }
             scene.remove(obj);
@@ -730,22 +727,14 @@ function init() {
         
         if (obj.userData.life <= 0) {
           if (obj.userData.explosive) {
-            const explosionGeo = new THREE.SphereGeometry(3, 16, 16);
-            const explosionMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.6 });
-            const explosion = new THREE.Mesh(explosionGeo, explosionMat);
-            explosion.position.copy(obj.position);
-            scene.add(explosion);
-            setTimeout(() => scene.remove(explosion), 300);
+            const ex = new THREE.Mesh(
+              new THREE.SphereGeometry(3, 16, 16),
+              new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.6 })
+            );
+            ex.position.copy(obj.position);
+            scene.add(ex);
+            setTimeout(() => scene.remove(ex), 300);
           }
-          scene.remove(obj);
-        }
-      }
-      
-      if (obj.userData.isParticle) {
-        obj.position.add(obj.userData.velocity.clone().multiplyScalar(dt));
-        obj.userData.velocity.y -= 10 * dt;
-        obj.userData.life -= dt;
-        if (obj.userData.life <= 0) {
           scene.remove(obj);
         }
       }
