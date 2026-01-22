@@ -20,14 +20,14 @@ const WEAPONS = {
   knife: { name: "Messer", damage: 100, cost: 10, emoji: "🔪", range: 5, projectile: false },
   sword: { name: "Schwert", damage: 150, cost: 50, emoji: "⚔️", range: 6, projectile: false },
   axe: { name: "Axt", damage: 160, cost: 75, emoji: "🪓", range: 6, projectile: false },
-  spear: { name: "Speer", damage: 120, cost: 60, emoji: "🔱", range: 8, projectile: true, speed: 25, color: 0x8b4513 },
-  bow: { name: "Bogen", damage: 200, cost: 100, emoji: "🏹", range: 50, projectile: true, speed: 30, color: 0x8b4513 },
-  pistol: { name: "Pistole", damage: 250, cost: 200, emoji: "🔫", range: 80, projectile: true, speed: 50, color: 0xffff00 },
-  rifle: { name: "Gewehr", damage: 300, cost: 400, emoji: "🔫", range: 100, projectile: true, speed: 60, color: 0xff8800 },
-  shotgun: { name: "Schrotflinte", damage: 350, cost: 500, emoji: "💥", range: 30, projectile: true, speed: 40, color: 0xff0000, spread: 3 },
-  sniper: { name: "Scharfschütze", damage: 450, cost: 800, emoji: "🎯", range: 150, projectile: true, speed: 80, color: 0x00ffff },
-  rpg: { name: "RPG", damage: 600, cost: 1500, emoji: "🚀", range: 100, projectile: true, speed: 35, color: 0xff0000, explosive: true },
-  minigun: { name: "Minigun", damage: 280, cost: 1200, emoji: "⚡", range: 70, projectile: true, speed: 70, color: 0xffaa00 }
+  spear: { name: "Speer", damage: 120, cost: 60, emoji: "🔱", range: 8, projectile: true, speed: 25, color: 0x8b4513, fireRate: 0.5 },
+  bow: { name: "Bogen", damage: 200, cost: 100, emoji: "🏹", range: 50, projectile: true, speed: 30, color: 0x8b4513, fireRate: 0.5 },
+  pistol: { name: "Pistole", damage: 250, cost: 200, emoji: "🔫", range: 80, projectile: true, speed: 50, color: 0xffff00, fireRate: 0.3 },
+  rifle: { name: "Gewehr", damage: 300, cost: 400, emoji: "🔫", range: 100, projectile: true, speed: 60, color: 0xff8800, fireRate: 0.2 },
+  shotgun: { name: "Schrotflinte", damage: 350, cost: 500, emoji: "💥", range: 30, projectile: true, speed: 40, color: 0xff0000, spread: 3, fireRate: 0.8 },
+  sniper: { name: "Scharfschütze", damage: 450, cost: 800, emoji: "🎯", range: 150, projectile: true, speed: 80, color: 0x00ffff, fireRate: 1 },
+  rpg: { name: "RPG", damage: 600, cost: 1500, emoji: "🚀", range: 100, projectile: true, speed: 35, color: 0xff0000, explosive: true, fireRate: 2 },
+  minigun: { name: "Minigun", damage: 80, cost: 1200, emoji: "⚡", range: 70, projectile: true, speed: 70, color: 0xffaa00, fireRate: 0.05, autoFire: true }
 };
 
 const SKINS = [
@@ -42,12 +42,12 @@ const ANIMALS = ['🐷', '🐮', '🐔', '🐑'];
 function showSkinSelector() {
   const s = document.createElement('div');
   s.id = 'skinSelector';
-  s.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;';
-  s.innerHTML = `<h2 style="color:white;font-size:2em;margin:20px;">Wähle deinen Skin</h2>
-    <div style="display:flex;gap:20px;flex-wrap:wrap;">${SKINS.map((sk, i) => 
-    `<div class="skin-opt" data-i="${i}" style="cursor:pointer;padding:15px;background:rgba(255,255,255,0.1);border:3px solid white;border-radius:10px;text-align:center;">
-      <img src="${sk.url}" style="width:100px;height:100px;image-rendering:pixelated;">
-      <p style="color:white;margin-top:10px;font-size:1.2em;">${sk.name}</p>
+  s.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;overflow-y:auto;';
+  s.innerHTML = `<h2 style="color:white;font-size:1.8em;margin:15px;">Wähle deinen Skin</h2>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;padding:15px;max-width:400px;">${SKINS.map((sk, i) => 
+    `<div class="skin-opt" data-i="${i}" style="cursor:pointer;padding:12px;background:rgba(255,255,255,0.1);border:3px solid white;border-radius:10px;text-align:center;">
+      <img src="${sk.url}" style="width:80px;height:80px;image-rendering:pixelated;">
+      <p style="color:white;margin-top:8px;font-size:1em;">${sk.name}</p>
     </div>`).join('')}</div>`;
   document.body.appendChild(s);
   
@@ -63,37 +63,37 @@ function showSkinSelector() {
 function showShop() {
   const sh = document.createElement('div');
   sh.id = 'shopModal';
-  sh.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:150;overflow-y:scroll;padding:20px;padding-bottom:100px;';
+  sh.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:150;overflow-y:scroll;padding:10px;padding-bottom:80px;';
   sh.innerHTML = `
-    <div style="max-width:1200px;margin:0 auto;">
-      <h2 style="color:gold;text-align:center;font-size:2.5em;margin-bottom:10px;">🏪 SHOP</h2>
-      <p style="color:white;text-align:center;font-size:1.5em;margin-bottom:30px;">Deine Münzen: 🪙 ${gameState.coins}</p>
-      <button class="close-shop-btn" style="position:fixed;top:20px;right:20px;padding:15px 30px;font-size:1.8em;background:red;color:white;border:none;border-radius:12px;cursor:pointer;z-index:151;font-weight:bold;">❌ SCHLIEẞEN</button>
+    <div style="max-width:900px;margin:0 auto;">
+      <h2 style="color:gold;text-align:center;font-size:1.5em;margin:8px 0;">🏪 SHOP</h2>
+      <p style="color:white;text-align:center;font-size:1.1em;margin-bottom:12px;">🪙 ${gameState.coins}</p>
+      <button class="close-shop-btn" style="position:fixed;top:8px;right:8px;padding:8px 16px;font-size:1.2em;background:red;color:white;border:none;border-radius:8px;cursor:pointer;z-index:151;">❌</button>
       
-      <h3 style="color:white;margin:30px 0 20px 0;font-size:1.8em;border-bottom:3px solid gold;padding-bottom:10px;">⚔️ WAFFEN</h3>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;margin-bottom:50px;">
+      <h3 style="color:white;margin:12px 0 8px 0;font-size:1.2em;border-bottom:2px solid gold;padding-bottom:4px;">⚔️ WAFFEN</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:20px;">
         ${Object.entries(WEAPONS).map(([k, w]) => {
           const own = gameState.ownedWeapons.includes(k);
           const eq = gameState.weapon === k;
-          return `<div class="weapon-card" data-key="${k}" style="padding:20px;background:${eq?'linear-gradient(135deg,rgba(0,255,0,0.4),rgba(0,200,0,0.3))':own?'linear-gradient(135deg,rgba(100,100,255,0.3),rgba(50,50,200,0.2))':'linear-gradient(135deg,rgba(255,255,255,0.15),rgba(200,200,200,0.1))'};border:3px solid ${eq?'#00ff00':own?'#6666ff':'white'};border-radius:15px;text-align:center;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.5)';" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none';">
-            <div style="font-size:4em;margin-bottom:10px;">${w.emoji}</div>
-            <p style="color:white;font-size:1.3em;font-weight:bold;margin:10px 0;">${w.name}</p>
-            <p style="color:#ffeb3b;font-size:1.1em;margin:5px 0;">💥 ${w.damage} Schaden</p>
-            <p style="color:#00bcd4;font-size:1.1em;margin:5px 0;">📏 ${w.range}m Reichweite</p>
-            <p style="color:${w.cost<=gameState.coins||own?'#ffd700':'#ff5555'};font-size:1.4em;margin-top:15px;font-weight:bold;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;">
-              ${eq?'✅ AUSGERÜSTET':own?'👆 AUSRÜSTEN':w.cost===0?'🎁 GRATIS':`🪙 ${w.cost}`}
+          return `<div class="weapon-card" data-key="${k}" style="padding:10px;background:${eq?'rgba(0,255,0,0.3)':own?'rgba(100,100,255,0.2)':'rgba(255,255,255,0.1)'};border:2px solid ${eq?'lime':own?'cyan':'white'};border-radius:8px;text-align:center;cursor:pointer;">
+            <div style="font-size:2em;">${w.emoji}</div>
+            <p style="color:white;font-size:0.75em;font-weight:bold;margin:4px 0;">${w.name}</p>
+            <p style="color:#ffeb3b;font-size:0.7em;">💥${w.damage}</p>
+            <p style="color:#00bcd4;font-size:0.7em;">📏${w.range}m</p>
+            <p style="color:${w.cost<=gameState.coins||own?'#ffd700':'#ff5555'};font-size:0.85em;margin-top:6px;font-weight:bold;">
+              ${eq?'✅':own?'👆':w.cost===0?'🎁':`🪙${w.cost}`}
             </p>
           </div>`;
         }).join('')}
       </div>
       
-      <h3 style="color:white;margin:30px 0 20px 0;font-size:1.8em;border-bottom:3px solid gold;padding-bottom:10px;">📦 BLÖCKE KAUFEN</h3>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:20px;margin-bottom:50px;">
+      <h3 style="color:white;margin:12px 0 8px 0;font-size:1.2em;border-bottom:2px solid gold;padding-bottom:4px;">📦 BLÖCKE</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;">
         ${['grass','dirt','stone','sand','wood','leaves'].map(b => 
-          `<div class="block-card" data-block="${b}" style="padding:20px;background:linear-gradient(135deg,rgba(255,255,255,0.15),rgba(200,200,200,0.1));border:3px solid white;border-radius:15px;text-align:center;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">
-            <div style="font-size:3.5em;margin-bottom:10px;">${{grass:"🟩",dirt:"🟫",stone:"⬜",sand:"🟨",wood:"🪵",leaves:"🍃"}[b]}</div>
-            <p style="color:white;font-size:1.2em;margin:10px 0;font-weight:bold;">10x ${b.toUpperCase()}</p>
-            <p style="color:#ffd700;font-size:1.5em;margin-top:10px;font-weight:bold;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px;">🪙 5</p>
+          `<div class="block-card" data-block="${b}" style="padding:10px;background:rgba(255,255,255,0.1);border:2px solid white;border-radius:8px;text-align:center;cursor:pointer;">
+            <div style="font-size:2em;">${{grass:"🟩",dirt:"🟫",stone:"⬜",sand:"🟨",wood:"🪵",leaves:"🍃"}[b]}</div>
+            <p style="color:white;font-size:0.8em;margin:4px 0;">10x</p>
+            <p style="color:#ffd700;font-size:0.95em;font-weight:bold;">🪙5</p>
           </div>`
         ).join('')}
       </div>
@@ -149,17 +149,17 @@ $("startBtn").onclick = () => {
 setTimeout(() => showSkinSelector(), 100);
 
 function updateUI() {
-  $("health").textContent = `❤️ ${gameState.health}`;
-  $("hunger").textContent = `🍖 ${gameState.hunger}% | 🥩 ${gameState.meat}`;
-  $("coins").textContent = `🪙 ${gameState.coins} | ${WEAPONS[gameState.weapon].emoji}`;
+  $("health").textContent = `❤️${gameState.health}`;
+  $("hunger").textContent = `🍖${gameState.hunger}% 🥩${gameState.meat}`;
+  $("coins").textContent = `🪙${gameState.coins} ${WEAPONS[gameState.weapon].emoji}`;
   
   const hotbar = $("hotbar");
   hotbar.innerHTML = "";
   for (const [block, count] of Object.entries(gameState.inventory)) {
     if (block === 'water') continue;
     const slot = document.createElement("div");
-    slot.style.cssText = `width:70px;height:70px;background:url('${block}.png') center/cover,rgba(0,0,0,0.7);border:3px solid ${block === gameState.selectedBlock ? "yellow" : "white"};color:white;display:flex;align-items:flex-end;justify-content:center;border-radius:4px;cursor:pointer;`;
-    slot.innerHTML = `<div style="background:rgba(0,0,0,0.8);padding:2px 8px;border-radius:3px;font-size:14px;font-weight:bold;">${count}</div>`;
+    slot.style.cssText = `width:55px;height:55px;background:url('${block}.png') center/cover,rgba(0,0,0,0.7);border:2px solid ${block === gameState.selectedBlock ? "yellow" : "white"};color:white;display:flex;align-items:flex-end;justify-content:center;border-radius:4px;cursor:pointer;`;
+    slot.innerHTML = `<div style="background:rgba(0,0,0,0.8);padding:1px 5px;border-radius:2px;font-size:11px;font-weight:bold;">${count}</div>`;
     slot.onclick = () => {
       gameState.selectedBlock = block;
       updateUI();
@@ -173,7 +173,7 @@ function init() {
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(devicePixelRatio);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -223,6 +223,66 @@ function init() {
   const CHUNK = 16;
   const chunks = new Set();
   const key = (x, y, z) => `${x},${y},${z}`;
+
+  // MINIMAP mit besserer Grafik
+  const minimapSize = Math.min(innerWidth, innerHeight) < 600 ? 120 : 150;
+  const minimapCanvas = document.createElement('canvas');
+  minimapCanvas.width = minimapCanvas.height = minimapSize;
+  minimapCanvas.style.cssText = `position:fixed;top:8px;right:8px;border:3px solid white;border-radius:10px;z-index:100;background:rgba(0,0,0,0.7);box-shadow:0 4px 8px rgba(0,0,0,0.5);`;
+  document.body.appendChild(minimapCanvas);
+  const minimapCtx = minimapCanvas.getContext('2d');
+
+  function updateMinimap() {
+    minimapCtx.fillStyle = 'rgba(100,150,200,1)';
+    minimapCtx.fillRect(0, 0, minimapSize, minimapSize);
+    
+    const scale = 1.5;
+    const centerX = minimapSize / 2;
+    const centerY = minimapSize / 2;
+    
+    // Grid
+    minimapCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+    minimapCtx.lineWidth = 1;
+    for (let i = 0; i < minimapSize; i += 20) {
+      minimapCtx.beginPath();
+      minimapCtx.moveTo(i, 0);
+      minimapCtx.lineTo(i, minimapSize);
+      minimapCtx.stroke();
+      minimapCtx.beginPath();
+      minimapCtx.moveTo(0, i);
+      minimapCtx.lineTo(minimapSize, i);
+      minimapCtx.stroke();
+    }
+    
+    // Tiere
+    animals.forEach(a => {
+      const dx = (a.position.x - player.pos.x) / scale;
+      const dz = (a.position.z - player.pos.z) / scale;
+      if (Math.abs(dx) < minimapSize/2 && Math.abs(dz) < minimapSize/2) {
+        minimapCtx.fillStyle = 'lime';
+        minimapCtx.beginPath();
+        minimapCtx.arc(centerX + dx, centerY + dz, 4, 0, Math.PI * 2);
+        minimapCtx.fill();
+      }
+    });
+    
+    // Spieler (zuletzt zeichnen)
+    minimapCtx.fillStyle = 'red';
+    minimapCtx.beginPath();
+    minimapCtx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+    minimapCtx.fill();
+    
+    // Richtungsanzeige
+    minimapCtx.strokeStyle = 'yellow';
+    minimapCtx.lineWidth = 3;
+    minimapCtx.beginPath();
+    minimapCtx.moveTo(centerX, centerY);
+    minimapCtx.lineTo(
+      centerX + Math.sin(player.yaw) * 20,
+      centerY - Math.cos(player.yaw) * 20
+    );
+    minimapCtx.stroke();
+  }
 
   function noise(x, z) {
     let n = 0;
@@ -361,9 +421,6 @@ function init() {
     return -Infinity;
   }
 
-  /* ENDE TEIL 1 - Schreib "continue" für TEIL 2 */
-/* TEIL 2 - CONTROLS & GAME LOOP */
-
   let jx = 0, jy = 0;
   const joyBase = $("joyBase");
   const joyStick = $("joyStick");
@@ -411,7 +468,7 @@ function init() {
   
   document.addEventListener("touchstart", e => {
     const target = e.target;
-    if (target.closest('#joyBase') || target.closest('.control') || target.closest('#hotbar') || target.closest('#shopModal')) return;
+    if (target.closest('#joyBase') || target.closest('.control') || target.closest('#hotbar') || target.closest('#shopModal') || target.closest('canvas[style*="border"]')) return;
     e.preventDefault();
     const touch = e.touches[0];
     touchId = touch.identifier;
@@ -433,8 +490,8 @@ function init() {
     if (!touch) return;
     const dx = touch.clientX - lx;
     const dy = touch.clientY - ly;
-    player.yaw -= dx * 0.003;
-    player.pitch -= dy * 0.003;
+    player.yaw -= dx * 0.005;
+    player.pitch -= dy * 0.005;
     player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch));
     lx = touch.clientX;
     ly = touch.clientY;
@@ -451,7 +508,7 @@ function init() {
   });
   
   document.addEventListener("mousedown", e => {
-    if (e.target.closest('#joyBase') || e.target.closest('.control') || e.target.closest('#hotbar') || e.target.closest('#shopModal')) return;
+    if (e.target.closest('#joyBase') || e.target.closest('.control') || e.target.closest('#hotbar') || e.target.closest('#shopModal') || e.target.closest('canvas[style*="border"]')) return;
     drag = true;
     lx = e.clientX;
     ly = e.clientY;
@@ -461,8 +518,8 @@ function init() {
   
   document.addEventListener("mousemove", e => {
     if (!drag) return;
-    player.yaw -= (e.clientX - lx) * 0.002;
-    player.pitch -= (e.clientY - ly) * 0.002;
+    player.yaw -= (e.clientX - lx) * 0.003;
+    player.pitch -= (e.clientY - ly) * 0.003;
     player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch));
     lx = e.clientX;
     ly = e.clientY;
@@ -470,12 +527,16 @@ function init() {
 
   const ray = new THREE.Raycaster();
 
+  function getDirection() {
+    return new THREE.Vector3(
+      Math.sin(player.yaw) * Math.cos(player.pitch),
+      Math.sin(player.pitch),
+      Math.cos(player.yaw) * Math.cos(player.pitch)
+    ).normalize();
+  }
+
   function getHit() {
-    // EXAKT auf gelben Punkt zielen
-    camera.updateMatrixWorld();
-    const vec = new THREE.Vector3(0, 0, -1);
-    vec.unproject(camera);
-    const dir = vec.sub(camera.position).normalize();
+    const dir = getDirection();
     ray.set(camera.position, dir);
     ray.far = 10;
     const hits = ray.intersectObjects(blocks.map(b => b.mesh));
@@ -483,10 +544,7 @@ function init() {
   }
 
   function getAnimalHit() {
-    camera.updateMatrixWorld();
-    const vec = new THREE.Vector3(0, 0, -1);
-    vec.unproject(camera);
-    const dir = vec.sub(camera.position).normalize();
+    const dir = getDirection();
     ray.set(camera.position, dir);
     ray.far = WEAPONS[gameState.weapon].range;
     const hits = ray.intersectObjects(animals);
@@ -497,11 +555,7 @@ function init() {
     const w = WEAPONS[gameState.weapon];
     if (!w.projectile) return;
     
-    camera.updateMatrixWorld();
-    const vec = new THREE.Vector3(0, 0, -1);
-    vec.unproject(camera);
-    const dir = vec.sub(camera.position).normalize();
-    
+    const dir = getDirection();
     const pGeo = w.emoji === '🏹' ? new THREE.ConeGeometry(0.15, 0.6, 8) : new THREE.SphereGeometry(0.2);
     const pMat = new THREE.MeshBasicMaterial({ color: w.color });
     
@@ -537,7 +591,11 @@ function init() {
     }
   }
 
-  $("mine").onclick = () => {
+  let isShooting = false;
+  let lastShotTime = 0;
+
+  $("mine").ontouchstart = $("mine").onmousedown = (e) => {
+    e.preventDefault();
     const h = getHit();
     if (!h || h.distance > 5) return;
     const p = h.object.position;
@@ -553,7 +611,8 @@ function init() {
     }
   };
 
-  $("build").onclick = () => {
+  $("build").ontouchstart = $("build").onmousedown = (e) => {
+    e.preventDefault();
     if (gameState.inventory[gameState.selectedBlock] <= 0) return;
     const h = getHit();
     if (!h || h.distance > 5) return;
@@ -568,40 +627,26 @@ function init() {
     updateUI();
   };
 
-  $("jump").onclick = () => {
+  $("jump").ontouchstart = $("jump").onmousedown = (e) => {
+    e.preventDefault();
     if (player.onGround) {
-      player.vel.y = 8;
+      player.vel.y = 9;
       player.onGround = false;
     }
   };
 
-  $("shoot").onclick = () => {
-    const w = WEAPONS[gameState.weapon];
-    if (w.projectile) {
-      shootProjectile();
-    } else {
-      const h = getAnimalHit();
-      if (h) {
-        const an = h.object;
-        an.userData.health -= w.damage;
-        console.log(`Tier getroffen! ${an.userData.health}/${an.userData.maxHealth} HP`);
-        
-        if (an.userData.health <= 0) {
-          const idx = animals.indexOf(an);
-          if (idx > -1) {
-            scene.remove(an);
-            animals.splice(idx, 1);
-            gameState.coins += 5;
-            gameState.meat += 1;
-            updateUI();
-            console.log('Tier tot! +5🪙 +1🥩');
-          }
-        }
-      }
-    }
+  $("shoot").ontouchstart = $("shoot").onmousedown = (e) => {
+    e.preventDefault();
+    isShooting = true;
   };
 
-  $("eatMeat").onclick = () => {
+  $("shoot").ontouchend = $("shoot").onmouseup = (e) => {
+    e.preventDefault();
+    isShooting = false;
+  };
+
+  $("eatMeat").ontouchstart = $("eatMeat").onmousedown = (e) => {
+    e.preventDefault();
     if (gameState.meat > 0 && gameState.hunger < 100) {
       gameState.meat--;
       gameState.hunger = Math.min(100, gameState.hunger + 30);
@@ -611,9 +656,12 @@ function init() {
 
   const shopBtn = document.createElement('div');
   shopBtn.className = 'control';
-  shopBtn.style.cssText = 'top:80px;right:15px;bottom:auto;font-size:1.5em;';
+  shopBtn.style.cssText = 'top:80px;right:15px;bottom:auto;font-size:1.3em;';
   shopBtn.textContent = '🏪';
-  shopBtn.onclick = showShop;
+  shopBtn.ontouchstart = shopBtn.onmousedown = (e) => {
+    e.preventDefault();
+    showShop();
+  };
   document.body.appendChild(shopBtn);
 
   let hungerTimer = 0, damageTimer = 0;
@@ -626,7 +674,7 @@ function init() {
     updateUI();
     
     const dm = document.createElement('div');
-    dm.style.cssText = 'position:fixed;inset:0;background:rgba(255,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:180;font-size:3em;color:white;font-weight:bold;';
+    dm.style.cssText = 'position:fixed;inset:0;background:rgba(255,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:180;font-size:2.5em;color:white;font-weight:bold;';
     dm.textContent = '💀 Du bist gestorben!';
     document.body.appendChild(dm);
     setTimeout(() => dm.remove(), 2000);
@@ -637,6 +685,7 @@ function init() {
   function loop() {
     requestAnimationFrame(loop);
     const dt = clock.getDelta();
+    const time = clock.getElapsedTime();
 
     const cx = Math.floor(player.pos.x / CHUNK) * CHUNK;
     const cz = Math.floor(player.pos.z / CHUNK) * CHUNK;
@@ -644,11 +693,13 @@ function init() {
       for (let dz = -2; dz <= 2; dz++)
         genChunk(cx + dx * CHUNK, cz + dz * CHUNK);
 
+    // VERBESSERTE BEWEGUNG
     const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
+    const speed = 8;
 
-    const nextX = player.pos.x + (forward.x * jy + right.x * jx) * 6 * dt;
-    const nextZ = player.pos.z + (forward.z * jy + right.z * jx) * 6 * dt;
+    const nextX = player.pos.x + (forward.x * jy + right.x * jx) * speed * dt;
+    const nextZ = player.pos.z + (forward.z * jy + right.z * jx) * speed * dt;
     
     const blockAhead = world.has(key(Math.floor(nextX), Math.floor(player.pos.y), Math.floor(nextZ)));
     const blockAbove = world.has(key(Math.floor(nextX), Math.floor(player.pos.y + 1), Math.floor(nextZ)));
@@ -658,7 +709,7 @@ function init() {
       player.pos.z = nextZ;
     }
 
-    player.vel.y -= 20 * dt;
+    player.vel.y -= 25 * dt;
     player.pos.y += player.vel.y * dt;
 
     const gy = groundY(player.pos.x, player.pos.z);
@@ -671,6 +722,37 @@ function init() {
     }
 
     if (player.pos.y < -10) respawn();
+
+    // AUTO-FIRE für Minigun und andere Waffen
+    if (isShooting) {
+      const w = WEAPONS[gameState.weapon];
+      const fireRate = w.fireRate || 0.5;
+      
+      if (time - lastShotTime >= fireRate) {
+        lastShotTime = time;
+        
+        if (w.projectile) {
+          shootProjectile();
+        } else {
+          const h = getAnimalHit();
+          if (h) {
+            const an = h.object;
+            an.userData.health -= w.damage;
+            
+            if (an.userData.health <= 0) {
+              const idx = animals.indexOf(an);
+              if (idx > -1) {
+                scene.remove(an);
+                animals.splice(idx, 1);
+                gameState.coins += 5;
+                gameState.meat += 1;
+                updateUI();
+              }
+            }
+          }
+        }
+      }
+    }
 
     hungerTimer += dt;
     if (hungerTimer >= 10) {
@@ -695,8 +777,8 @@ function init() {
         a.userData.moveDir = Math.random() * Math.PI * 2;
         a.userData.moveTimer = 0;
       }
-      a.position.x += Math.sin(a.userData.moveDir) * 0.5 * dt;
-      a.position.z += Math.cos(a.userData.moveDir) * 0.5 * dt;
+      a.position.x += Math.sin(a.userData.moveDir) * 0.6 * dt;
+      a.position.z += Math.cos(a.userData.moveDir) * 0.6 * dt;
       const ay = groundY(a.position.x, a.position.z);
       if (ay > -Infinity) a.position.y = ay + 1;
     });
@@ -709,7 +791,6 @@ function init() {
         animals.forEach(a => {
           if (obj.position.distanceTo(a.position) < 2) {
             a.userData.health -= obj.userData.damage;
-            console.log(`Projektil trifft! ${a.userData.health}/${a.userData.maxHealth} HP`);
             if (a.userData.health <= 0) {
               const idx = animals.indexOf(a);
               if (idx > -1) {
@@ -718,7 +799,6 @@ function init() {
                 gameState.coins += 5;
                 gameState.meat += 1;
                 updateUI();
-                console.log('Tier durch Projektil tot!');
               }
             }
             scene.remove(obj);
@@ -747,6 +827,7 @@ function init() {
       camera.position.z + Math.cos(player.yaw) * Math.cos(player.pitch)
     );
 
+    updateMinimap();
     renderer.render(scene, camera);
   }
   
