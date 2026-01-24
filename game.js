@@ -581,11 +581,11 @@ function init() {
   const ray = new THREE.Raycaster();
 
   function getDirection() {
-    return new THREE.Vector3(
-      Math.sin(player.yaw) * Math.cos(player.pitch),
-      Math.sin(player.pitch),
-      Math.cos(player.yaw) * Math.cos(player.pitch)
-    ).normalize();
+    // EXAKTE Richtung - direkt vom Crosshair
+    const dir = new THREE.Vector3(0, 0, -1);
+    dir.unproject(camera);
+    dir.sub(camera.position).normalize();
+    return dir;
   }
 
   function getHit() {
@@ -754,13 +754,9 @@ function init() {
     const nextX = player.pos.x + (forward.x * jy + right.x * jx) * speed * dt;
     const nextZ = player.pos.z + (forward.z * jy + right.z * jx) * speed * dt;
     
-    const blockAhead = world.has(key(Math.floor(nextX), Math.floor(player.pos.y), Math.floor(nextZ)));
-    const blockAbove = world.has(key(Math.floor(nextX), Math.floor(player.pos.y + 1), Math.floor(nextZ)));
-    
-    if (!blockAhead && !blockAbove) {
-      player.pos.x = nextX;
-      player.pos.z = nextZ;
-    }
+    // KEINE Kollision mehr - man kann überall durchlaufen!
+    player.pos.x = nextX;
+    player.pos.z = nextZ;
 
     player.vel.y -= 25 * dt;
     player.pos.y += player.vel.y * dt;
