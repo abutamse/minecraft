@@ -278,17 +278,12 @@ function init() {
   const key = (x, y, z) => `${x},${y},${z}`;
 
   // MINIMAP mit besserer Grafik
-  const minimapSize = Math.min(innerWidth, innerHeight) < 600 ? 120 : 150;
+  const minimapSize = 100;
   const minimapCanvas = document.createElement('canvas');
   minimapCanvas.width = minimapCanvas.height = minimapSize;
-  minimapCanvas.style.cssText = `position:fixed;top:8px;right:8px;border:3px solid white;border-radius:10px;z-index:100;background:rgba(0,0,0,0.7);box-shadow:0 4px 8px rgba(0,0,0,0.5);display:none;`;
+  minimapCanvas.style.cssText = `position:fixed;top:170px;right:10px;width:${minimapSize}px;height:${minimapSize}px;border:2px solid white;border-radius:8px;z-index:50;background:rgba(0,0,0,0.7);pointer-events:none;`;
   document.body.appendChild(minimapCanvas);
   const minimapCtx = minimapCanvas.getContext('2d');
-  
-  // Zeige Minimap erst nach Start
-  setTimeout(() => {
-    minimapCanvas.style.display = 'block';
-  }, 2000);
 
   function updateMinimap() {
     minimapCtx.fillStyle = 'rgba(100,150,200,1)';
