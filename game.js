@@ -16,10 +16,10 @@ const gameState = {
 };
 
 const WEAPONS = {
-  fist: { name: "Faust", damage: 50, cost: 0, emoji: "👊", range: 5, projectile: false },
-  knife: { name: "Messer", damage: 100, cost: 10, emoji: "🔪", range: 5, projectile: false },
-  sword: { name: "Schwert", damage: 150, cost: 50, emoji: "⚔️", range: 6, projectile: false },
-  axe: { name: "Axt", damage: 160, cost: 75, emoji: "🪓", range: 6, projectile: false },
+  fist: { name: "Faust", damage: 50, cost: 0, emoji: "👊", range: 5, projectile: false, fireRate: 0.3 },
+  knife: { name: "Messer", damage: 100, cost: 10, emoji: "🔪", range: 5, projectile: false, fireRate: 0.3 },
+  sword: { name: "Schwert", damage: 150, cost: 50, emoji: "⚔️", range: 6, projectile: false, fireRate: 0.4 },
+  axe: { name: "Axt", damage: 160, cost: 75, emoji: "🪓", range: 6, projectile: false, fireRate: 0.4 },
   spear: { name: "Speer", damage: 120, cost: 60, emoji: "🔱", range: 8, projectile: true, speed: 25, color: 0x8b4513, fireRate: 0.5 },
   bow: { name: "Bogen", damage: 200, cost: 100, emoji: "🏹", range: 50, projectile: true, speed: 30, color: 0x8b4513, fireRate: 0.5 },
   pistol: { name: "Pistole", damage: 250, cost: 200, emoji: "🔫", range: 80, projectile: true, speed: 50, color: 0xffff00, fireRate: 0.3 },
@@ -224,7 +224,6 @@ function init() {
   const chunks = new Set();
   const key = (x, y, z) => `${x},${y},${z}`;
 
-  // MINIMAP mit besserer Grafik
   const minimapSize = Math.min(innerWidth, innerHeight) < 600 ? 120 : 150;
   const minimapCanvas = document.createElement('canvas');
   minimapCanvas.width = minimapCanvas.height = minimapSize;
@@ -240,7 +239,6 @@ function init() {
     const centerX = minimapSize / 2;
     const centerY = minimapSize / 2;
     
-    // Grid
     minimapCtx.strokeStyle = 'rgba(255,255,255,0.1)';
     minimapCtx.lineWidth = 1;
     for (let i = 0; i < minimapSize; i += 20) {
@@ -254,7 +252,6 @@ function init() {
       minimapCtx.stroke();
     }
     
-    // Tiere
     animals.forEach(a => {
       const dx = (a.position.x - player.pos.x) / scale;
       const dz = (a.position.z - player.pos.z) / scale;
@@ -266,13 +263,11 @@ function init() {
       }
     });
     
-    // Spieler (zuletzt zeichnen)
     minimapCtx.fillStyle = 'red';
     minimapCtx.beginPath();
     minimapCtx.arc(centerX, centerY, 5, 0, Math.PI * 2);
     minimapCtx.fill();
     
-    // Richtungsanzeige
     minimapCtx.strokeStyle = 'yellow';
     minimapCtx.lineWidth = 3;
     minimapCtx.beginPath();
@@ -420,6 +415,9 @@ function init() {
     }
     return -Infinity;
   }
+
+  /* ENDE TEIL 1 - Schreib "continue" für TEIL 2 */
+/* TEIL 2 - CONTROLS & GAME LOOP */
 
   let jx = 0, jy = 0;
   const joyBase = $("joyBase");
@@ -693,7 +691,6 @@ function init() {
       for (let dz = -2; dz <= 2; dz++)
         genChunk(cx + dx * CHUNK, cz + dz * CHUNK);
 
-    // VERBESSERTE BEWEGUNG
     const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
     const speed = 8;
@@ -723,7 +720,6 @@ function init() {
 
     if (player.pos.y < -10) respawn();
 
-    // AUTO-FIRE für Minigun und andere Waffen
     if (isShooting) {
       const w = WEAPONS[gameState.weapon];
       const fireRate = w.fireRate || 0.5;
