@@ -16,10 +16,10 @@ const gameState = {
 };
 
 const WEAPONS = {
-  fist: { name: "Faust", damage: 50, cost: 0, emoji: "👊", range: 5, projectile: false, fireRate: 0.3 },
-  knife: { name: "Messer", damage: 100, cost: 10, emoji: "🔪", range: 5, projectile: false, fireRate: 0.3 },
-  sword: { name: "Schwert", damage: 150, cost: 50, emoji: "⚔️", range: 6, projectile: false, fireRate: 0.4 },
-  axe: { name: "Axt", damage: 160, cost: 75, emoji: "🪓", range: 6, projectile: false, fireRate: 0.4 },
+  fist: { name: "Faust", damage: 50, cost: 0, emoji: "👊", range: 5, projectile: false },
+  knife: { name: "Messer", damage: 100, cost: 10, emoji: "🔪", range: 5, projectile: false },
+  sword: { name: "Schwert", damage: 150, cost: 50, emoji: "⚔️", range: 6, projectile: false },
+  axe: { name: "Axt", damage: 160, cost: 75, emoji: "🪓", range: 6, projectile: false },
   spear: { name: "Speer", damage: 120, cost: 60, emoji: "🔱", range: 8, projectile: true, speed: 25, color: 0x8b4513, fireRate: 0.5 },
   bow: { name: "Bogen", damage: 200, cost: 100, emoji: "🏹", range: 50, projectile: true, speed: 30, color: 0x8b4513, fireRate: 0.5 },
   pistol: { name: "Pistole", damage: 250, cost: 200, emoji: "🔫", range: 80, projectile: true, speed: 50, color: 0xffff00, fireRate: 0.3 },
@@ -43,12 +43,18 @@ function showSkinSelector() {
   const s = document.createElement('div');
   s.id = 'skinSelector';
   s.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;overflow-y:auto;';
-  s.innerHTML = `<h2 style="color:white;font-size:1.8em;margin:15px;">Wähle deinen Skin</h2>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;padding:15px;max-width:400px;">${SKINS.map((sk, i) => 
-    `<div class="skin-opt" data-i="${i}" style="cursor:pointer;padding:12px;background:rgba(255,255,255,0.1);border:3px solid white;border-radius:10px;text-align:center;">
-      <img src="${sk.url}" style="width:80px;height:80px;image-rendering:pixelated;">
-      <p style="color:white;margin-top:8px;font-size:1em;">${sk.name}</p>
-    </div>`).join('')}</div>`;
+  s.innerHTML = `
+    <h2 style="color:white;font-size:1.8em;margin:15px;">Wähle deinen Skin</h2>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;padding:15px;max-width:400px;">
+      ${SKINS.map((sk, i) => 
+        `<div class="skin-opt" data-i="${i}" style="cursor:pointer;padding:12px;background:rgba(255,255,255,0.1);border:3px solid white;border-radius:10px;text-align:center;">
+          <img src="${sk.url}" style="width:80px;height:80px;image-rendering:pixelated;">
+          <p style="color:white;margin-top:8px;font-size:1em;">${sk.name}</p>
+        </div>`
+      ).join('')}
+    </div>
+    <button style="margin-top:20px;padding:12px 30px;font-size:1.1em;background:rgba(255,255,255,0.2);color:white;border:2px solid white;border-radius:10px;cursor:pointer;" onclick="this.parentElement.remove();document.getElementById('login').style.display='flex';">Überspringen</button>
+  `;
   document.body.appendChild(s);
   
   document.querySelectorAll('.skin-opt').forEach(el => {
@@ -193,11 +199,38 @@ function init() {
   scene.add(sun);
 
   const loader = new THREE.TextureLoader();
+  
+  // Erstelle Fallback-Texturen falls Bilder nicht laden
+  function createColorTexture(color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 16;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, 16, 16);
+    // Füge Noise hinzu für Textur-Effekt
+    for (let i = 0; i < 80; i++) {
+      ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.15})`;
+      ctx.fillRect(Math.random() * 16, Math.random() * 16, 1, 1);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = texture.minFilter = THREE.NearestFilter;
+    return texture;
+  }
+  
   const tex = n => {
-    const t = loader.load(n);
+    const t = loader.load(
+      n,
+      undefined,
+      undefined,
+      () => {
+        // Wenn Laden fehlschlägt, nutze Fallback-Farbe
+        console.log(`Textur ${n} nicht gefunden, nutze Fallback`);
+      }
+    );
     t.magFilter = t.minFilter = THREE.NearestFilter;
     return t;
   };
+  
   const textures = {
     grass: tex("grass.png"),
     dirt: tex("dirt.png"),
@@ -207,6 +240,26 @@ function init() {
     wood: tex("wood.png"),
     leaves: tex("leaves.png")
   };
+  
+  // Fallback-Texturen falls Original nicht laden
+  const fallbackTextures = {
+    grass: createColorTexture('#5a8f3a'),
+    dirt: createColorTexture('#8b5a3c'),
+    stone: createColorTexture('#808080'),
+    sand: createColorTexture('#ddc87f'),
+    water: createColorTexture('#4a9fd8'),
+    wood: createColorTexture('#6b4423'),
+    leaves: createColorTexture('#3a7d44')
+  };
+  
+  // Nutze Fallback wenn Original fehlt
+  setTimeout(() => {
+    Object.keys(textures).forEach(key => {
+      if (!textures[key].image || !textures[key].image.complete) {
+        textures[key] = fallbackTextures[key];
+      }
+    });
+  }, 1000);
 
   const player = {
     pos: new THREE.Vector3(0, 30, 0),
@@ -224,12 +277,18 @@ function init() {
   const chunks = new Set();
   const key = (x, y, z) => `${x},${y},${z}`;
 
+  // MINIMAP mit besserer Grafik
   const minimapSize = Math.min(innerWidth, innerHeight) < 600 ? 120 : 150;
   const minimapCanvas = document.createElement('canvas');
   minimapCanvas.width = minimapCanvas.height = minimapSize;
-  minimapCanvas.style.cssText = `position:fixed;top:8px;right:8px;border:3px solid white;border-radius:10px;z-index:100;background:rgba(0,0,0,0.7);box-shadow:0 4px 8px rgba(0,0,0,0.5);`;
+  minimapCanvas.style.cssText = `position:fixed;top:8px;right:8px;border:3px solid white;border-radius:10px;z-index:100;background:rgba(0,0,0,0.7);box-shadow:0 4px 8px rgba(0,0,0,0.5);display:none;`;
   document.body.appendChild(minimapCanvas);
   const minimapCtx = minimapCanvas.getContext('2d');
+  
+  // Zeige Minimap erst nach Start
+  setTimeout(() => {
+    minimapCanvas.style.display = 'block';
+  }, 2000);
 
   function updateMinimap() {
     minimapCtx.fillStyle = 'rgba(100,150,200,1)';
@@ -239,6 +298,7 @@ function init() {
     const centerX = minimapSize / 2;
     const centerY = minimapSize / 2;
     
+    // Grid
     minimapCtx.strokeStyle = 'rgba(255,255,255,0.1)';
     minimapCtx.lineWidth = 1;
     for (let i = 0; i < minimapSize; i += 20) {
@@ -252,6 +312,7 @@ function init() {
       minimapCtx.stroke();
     }
     
+    // Tiere
     animals.forEach(a => {
       const dx = (a.position.x - player.pos.x) / scale;
       const dz = (a.position.z - player.pos.z) / scale;
@@ -263,11 +324,13 @@ function init() {
       }
     });
     
+    // Spieler (zuletzt zeichnen)
     minimapCtx.fillStyle = 'red';
     minimapCtx.beginPath();
     minimapCtx.arc(centerX, centerY, 5, 0, Math.PI * 2);
     minimapCtx.fill();
     
+    // Richtungsanzeige
     minimapCtx.strokeStyle = 'yellow';
     minimapCtx.lineWidth = 3;
     minimapCtx.beginPath();
@@ -415,9 +478,6 @@ function init() {
     }
     return -Infinity;
   }
-
-  /* ENDE TEIL 1 - Schreib "continue" für TEIL 2 */
-/* TEIL 2 - CONTROLS & GAME LOOP */
 
   let jx = 0, jy = 0;
   const joyBase = $("joyBase");
@@ -691,6 +751,7 @@ function init() {
       for (let dz = -2; dz <= 2; dz++)
         genChunk(cx + dx * CHUNK, cz + dz * CHUNK);
 
+    // VERBESSERTE BEWEGUNG
     const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
     const speed = 8;
@@ -720,6 +781,7 @@ function init() {
 
     if (player.pos.y < -10) respawn();
 
+    // AUTO-FIRE für Minigun und andere Waffen
     if (isShooting) {
       const w = WEAPONS[gameState.weapon];
       const fireRate = w.fireRate || 0.5;
