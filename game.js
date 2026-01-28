@@ -152,7 +152,10 @@ $("startBtn").onclick = () => {
   init();
 };
 
-setTimeout(() => showSkinSelector(), 100);
+// Warte bis HTML komplett geladen ist
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => showSkinSelector(), 500);
+});
 
 function updateUI() {
   $("health").textContent = `❤️${gameState.health}`;
